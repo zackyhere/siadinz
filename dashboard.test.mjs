@@ -99,3 +99,30 @@ test("settings encrypt credentials and API reads updated values", async () => {
   assert.equal(response.status, 200);
   assert.equal(authorization, "Bearer updated-access-token");
 });
+
+test("settings accepts a same-origin Referer when Origin is absent", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const settingsPage = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await settingsPage.text())?.[1];
+
+  const save = await handleRequest(formRequest("/settings", {
+    csrf, accessToken: "replacement-token", apiSecret: "replacement-secret",
+  }, { cookie, referer: "https://siadinz.example/settings" }), env, upstream());
+
+  assert.equal(save.status, 303);
+});
+
+test("settings renders a recovery page when stored ciphertext is invalid", async () => {
+  const settings = new Map([["PRESENSI_ACCESS_TOKEN", "not-an-encrypted-envelope"]]);
+  const env = dashboardEnv(settings);
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+
+  const response = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Kredensial tersimpan tidak dapat didekripsi/);
+});

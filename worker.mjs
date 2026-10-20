@@ -111,7 +111,16 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
     ));
   }
 
-  const credentials = await effectiveCredentials(env);
+  let credentials;
+  try {
+    credentials = await effectiveCredentials(env);
+  } catch {
+    return json(500, failureBody(
+      RC.SERVER_MISCONFIGURED,
+      "credential_configuration_invalid",
+      "Stored attendance credentials cannot be decrypted with the current encryption key.",
+    ));
+  }
   if (!credentials.accessToken || !credentials.apiSecret) {
     return json(500, failureBody(
       RC.SERVER_MISCONFIGURED,

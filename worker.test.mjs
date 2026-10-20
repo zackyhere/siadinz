@@ -108,3 +108,14 @@ test("Worker writes a D1 audit event for no available attendance", async () => {
   assert.equal(events.length, 1);
   assert.deepEqual(events[0].slice(1, 5), ["failed", 1, 200, 0]);
 });
+
+test("API returns structured configuration failure for unreadable dashboard credentials", async () => {
+  const settings = new Map([["PRESENSI_ACCESS_TOKEN", "invalid-ciphertext"]]);
+  const testEnv = { ...env, DB: testDatabase([], settings) };
+  const response = await handleRequest(request("/api/v1/jadwal"), testEnv, async () => jsonResponse({}));
+  const body = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.equal(body.rc, 5);
+  assert.equal(body.error.code, "credential_configuration_invalid");
+});

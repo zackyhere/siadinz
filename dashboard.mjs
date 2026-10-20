@@ -89,6 +89,8 @@ function expiredSessionCookie() {
   return `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`;
 }
 
+export class CredentialConfigurationError extends Error {}
+
 async function encryptionKey(secret) {
   const raw = fromBase64url(secret);
   if (raw.length !== 32) throw new Error("CONFIG_ENCRYPTION_KEY must be a base64url-encoded 32-byte key.");
@@ -108,8 +110,12 @@ async function decrypt(value, secret) {
 }
 
 async function readSetting(database, key, encryptionSecret) {
-  const row = await database.prepare("SELECT ciphertext FROM dashboard_settings WHERE setting_key = ?").bind(key).first();
-  return row ? decrypt(row.ciphertext, encryptionSecret) : null;
+  try {
+    const row = await database.prepare("SELECT ciphertext FROM dashboard_settings WHERE setting_key = ?").bind(key).first();
+    return row ? await decrypt(row.ciphertext, encryptionSecret) : null;
+  } catch {
+    throw new CredentialConfigurationError("Stored dashboard credentials cannot be read with the current encryption key.");
+  }
 }
 
 export async function effectiveCredentials(env) {
@@ -137,12 +143,18 @@ function dashboardPage(session, attendance, message = "") {
   return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${rows || "<tr><td colspan=7>Tidak ada jadwal.</td></tr>"}</tbody></table></div></section>`));
 }
 
-function settingsPage(session, configured) {
-  return responseHtml(layout("Settings", `${nav(session.csrf)}<section class="card"><h1>Settings</h1><p>Nilai kosong mempertahankan nilai yang ada. Nilai tidak pernah ditampilkan kembali.</p><p>Access token: <strong>${configured.accessToken ? "configured" : "missing"}</strong>. API secret: <strong>${configured.apiSecret ? "configured" : "missing"}</strong>.</p><form method="post" action="/settings"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label>PRESENSI_ACCESS_TOKEN<textarea name="accessToken" autocomplete="off" spellcheck="false"></textarea></label><label>PRESENSI_API_SECRET<input type="password" name="apiSecret" autocomplete="new-password"></label><button type="submit">Simpan terenkripsi</button></form></section>`));
+function settingsPage(session, configured, message = "") {
+  return responseHtml(layout("Settings", `${nav(session.csrf)}<section class="card"><h1>Settings</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Nilai kosong mempertahankan nilai yang ada. Nilai tidak pernah ditampilkan kembali.</p><p>Access token: <strong>${configured.accessToken ? "configured" : "missing"}</strong>. API secret: <strong>${configured.apiSecret ? "configured" : "missing"}</strong>.</p><form method="post" action="/settings"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label>PRESENSI_ACCESS_TOKEN<textarea name="accessToken" autocomplete="off" spellcheck="false"></textarea></label><label>PRESENSI_API_SECRET<input type="password" name="apiSecret" autocomplete="new-password"></label><button type="submit">Simpan terenkripsi</button></form></section>`));
 }
 
 function csrfValid(request, form, session) {
-  return request.headers.get("origin") === new URL(request.url).origin && form.get("csrf") === session.csrf;
+  const expectedOrigin = new URL(request.url).origin;
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const sameOriginReferer = referer && (() => {
+    try { return new URL(referer).origin === expectedOrigin; } catch { return false; }
+  })();
+  return (origin === expectedOrigin || sameOriginReferer) && form.get("csrf") === session.csrf;
 }
 
 export async function handleDashboardRequest(request, env, attendanceLoader) {
@@ -161,17 +173,32 @@ export async function handleDashboardRequest(request, env, attendanceLoader) {
     return csrfValid(request, form, session) ? redirect("/login", { "set-cookie": expiredSessionCookie() }) : responseHtml(layout("Forbidden", "<section class=card><h1>Forbidden</h1></section>"), 403);
   }
   if (url.pathname === "/settings" && request.method === "GET") {
-    const credentials = await effectiveCredentials(env);
-    return settingsPage(session, { accessToken: Boolean(credentials.accessToken), apiSecret: Boolean(credentials.apiSecret) });
+    try {
+      const credentials = await effectiveCredentials(env);
+      return settingsPage(session, { accessToken: Boolean(credentials.accessToken), apiSecret: Boolean(credentials.apiSecret) });
+    } catch (error) {
+      if (error instanceof CredentialConfigurationError) {
+        return settingsPage(session, { accessToken: false, apiSecret: false }, "Kredensial tersimpan tidak dapat didekripsi. Isi ulang kedua nilai untuk menggantinya.");
+      }
+      return settingsPage(session, { accessToken: false, apiSecret: false }, "Konfigurasi tidak dapat dibaca. Anda dapat menyimpan ulang kedua nilai.");
+    }
   }
   if (url.pathname === "/settings" && request.method === "POST") {
     const form = await request.formData();
     if (!csrfValid(request, form, session)) return responseHtml(layout("Forbidden", "<section class=card><h1>Forbidden</h1></section>"), 403);
-    for (const [key, field] of [["PRESENSI_ACCESS_TOKEN", "accessToken"], ["PRESENSI_API_SECRET", "apiSecret"]]) {
-      const value = String(form.get(field) ?? "").trim();
-      if (value) await env.DB.prepare("INSERT INTO dashboard_settings (setting_key, ciphertext, updated_at) VALUES (?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET ciphertext = excluded.ciphertext, updated_at = excluded.updated_at").bind(key, await encrypt(value, env.CONFIG_ENCRYPTION_KEY), new Date().toISOString()).run();
+    const values = [["PRESENSI_ACCESS_TOKEN", "accessToken"], ["PRESENSI_API_SECRET", "apiSecret"]]
+      .map(([key, field]) => [key, String(form.get(field) ?? "").trim()]);
+    if (values.some(([, value]) => !value)) {
+      return settingsPage(session, { accessToken: false, apiSecret: false }, "Isi kedua nilai untuk menyimpan konfigurasi.");
     }
-    return redirect("/settings");
+    try {
+      for (const [key, value] of values) {
+        await env.DB.prepare("INSERT INTO dashboard_settings (setting_key, ciphertext, updated_at) VALUES (?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET ciphertext = excluded.ciphertext, updated_at = excluded.updated_at").bind(key, await encrypt(value, env.CONFIG_ENCRYPTION_KEY), new Date().toISOString()).run();
+      }
+      return redirect("/settings");
+    } catch {
+      return settingsPage(session, { accessToken: false, apiSecret: false }, "Konfigurasi tidak dapat disimpan. Periksa binding D1 dan kunci enkripsi.");
+    }
   }
   if (url.pathname === "/" || url.pathname === "/dashboard") {
     try { return dashboardPage(session, await attendanceLoader()); } catch { return dashboardPage(session, { state: "error", schedules: [] }, "Jadwal tidak dapat dimuat."); }
