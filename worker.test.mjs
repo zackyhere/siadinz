@@ -3,9 +3,23 @@ import test from "node:test";
 
 import { handleRequest } from "./worker.mjs";
 
+function auditDatabase(events = []) {
+  return {
+    prepare: () => ({
+      bind: (...values) => ({
+        run: async () => {
+          events.push(values);
+          return { success: true };
+        },
+      }),
+    }),
+  };
+}
+
 const env = {
   PRESENSI_ACCESS_TOKEN: "test-token",
   PRESENSI_API_SECRET: "test-api-secret",
+  DB: auditDatabase(),
 };
 
 function jsonResponse(body, status = 200) {
@@ -51,6 +65,7 @@ test("Worker returns complete schedule details", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.status, "success");
+  assert.equal(body.rc, 0);
   assert.equal(body.data.schedules[0].status, "not_started");
   assert.equal(body.data.schedules[0].details.jam_mulai, "07:00");
 });
@@ -65,7 +80,26 @@ test("Worker does not submit unavailable schedules", async () => {
   const response = await handleRequest(request("/api/v1/presensi", { method: "POST" }), env, fetchImpl);
   const body = await response.json();
 
-  assert.equal(response.status, 409);
-  assert.equal(body.status, "not_available");
+  assert.equal(response.status, 200);
+  assert.equal(body.status, "failed");
+  assert.equal(body.rc, 1);
+  assert.equal(body.data.state, "not_started");
   assert.equal(requests.some(({ method }) => method === "POST"), false);
+});
+
+test("Worker writes a D1 audit event for no available attendance", async () => {
+  const events = [];
+  const testEnv = { ...env, DB: auditDatabase(events) };
+  const fetchImpl = async (input) =>
+    jsonResponse(payloads([{ jam_kul: 0, is_attend: 0 }]).get(new URL(input).pathname));
+
+  const response = await handleRequest(
+    request("/api/v1/presensi", { method: "POST" }),
+    testEnv,
+    fetchImpl,
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(events.length, 1);
+  assert.deepEqual(events[0].slice(1, 5), ["failed", 1, 200, 0]);
 });
