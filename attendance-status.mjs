@@ -107,10 +107,23 @@ export function summarizeAttendance(sourcePayloads) {
   };
 }
 
+const WEEKDAY_ORDER = new Map([
+  ["SENIN", 1], ["SELASA", 2], ["RABU", 3], ["KAMIS", 4], ["JUMAT", 5], ["SABTU", 6], ["MINGGU", 7],
+]);
+
 function asKrsArray(payload) {
   const krs = payload?.data?.krs;
   if (!Array.isArray(krs)) throw new Error("Unexpected full course schedule response shape.");
   return krs;
+}
+
+function isScheduleValue(value) {
+  return typeof value === "string" && value.trim() !== "" && value.trim() !== "-";
+}
+
+function timeSortKey(value) {
+  const match = String(value).match(/(\d{1,2})[.:](\d{2})/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : Number.MAX_SAFE_INTEGER;
 }
 
 function fullScheduleSlots(course) {
@@ -118,11 +131,16 @@ function fullScheduleSlots(course) {
     const day = course[`hari${index}`];
     const session = course[`sesi${index}`];
     const room = course[`ruang${index}`];
-    return day || session || room ? [{
-      day: day ?? null,
-      session: session ?? null,
-      room: room ?? null,
-    }] : [];
+    if (!isScheduleValue(day) || !isScheduleValue(session) || !isScheduleValue(room)) return [];
+    const normalizedDay = day.trim();
+    const normalizedSession = session.trim();
+    return [{
+      day: normalizedDay,
+      session: normalizedSession,
+      room: room.trim(),
+      weekdayOrder: WEEKDAY_ORDER.get(normalizedDay.toLocaleUpperCase("id-ID")) ?? Number.MAX_SAFE_INTEGER,
+      startTimeOrder: timeSortKey(normalizedSession),
+    }];
   });
 }
 

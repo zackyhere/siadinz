@@ -143,7 +143,13 @@ function attendanceRows(schedules) {
 }
 
 function fullScheduleRows(schedules) {
-  return schedules.flatMap((course) => course.slots.map((slot) => `<tr><td>${escapeHtml(course.courseName)}</td><td>${escapeHtml(course.courseCode)}</td><td>${escapeHtml(course.classGroup)}</td><td>${escapeHtml(course.credits)}</td><td>${escapeHtml(slot.day)}</td><td>${escapeHtml(slot.session)}</td><td>${escapeHtml(slot.room)}</td></tr>`)).join("");
+  const slots = schedules.flatMap((course) => course.slots.map((slot) => ({ course, slot })));
+  slots.sort(({ course: leftCourse, slot: left }, { course: rightCourse, slot: right }) =>
+    left.weekdayOrder - right.weekdayOrder
+    || left.startTimeOrder - right.startTimeOrder
+    || String(leftCourse.courseCode).localeCompare(String(rightCourse.courseCode)),
+  );
+  return slots.map(({ course, slot }) => `<tr><td>${escapeHtml(course.courseName)}</td><td>${escapeHtml(course.courseCode)}</td><td>${escapeHtml(course.classGroup)}</td><td>${escapeHtml(course.credits)}</td><td>${escapeHtml(slot.day)}</td><td>${escapeHtml(slot.session)}</td><td>${escapeHtml(slot.room)}</td></tr>`).join("");
 }
 
 function dashboardPage(session, data, message = "") {

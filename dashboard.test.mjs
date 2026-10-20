@@ -66,17 +66,22 @@ test("dashboard session is secure and displays both schedule sources", async () 
 
   const response = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream(
     { nmmk: "KALKULUS", jam_kul: 0, is_attend: 0 },
-    [{ nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", sks: 3, hari1: "Senin", sesi1: "09:40–11:20", ruang1: "H.2.3", hari2: "Kamis", sesi2: "07:00–08:40", ruang2: "H.3.1" }],
+    [
+      { nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", sks: 4, hari1: "JUMAT", sesi1: "10.20-12.00", ruang1: "D1.2.KDR", hari2: "SENIN", sesi2: "12.30-14.10", ruang2: "A2.3.KDR", hari3: "-", sesi3: "-", ruang3: "-" },
+      { nmmk: "KALKULUS", kdmk: "F11.64101", klpk: "F11.C101", sks: 3, hari1: "SENIN", sesi1: "07.00-09.30", ruang1: "A2.2.KDR", hari2: "-", sesi2: "-", ruang2: "-", hari3: "-", sesi3: "-", ruang3: "-" },
+    ],
   ));
   const html = await response.text();
   assert.equal(response.status, 200);
   assert.match(html, /Jadwal presensi hari ini/);
   assert.match(html, /Jadwal mata kuliah semester ini/);
-  assert.match(html, /KALKULUS/);
   assert.match(html, /FISIKA/);
-  assert.match(html, /Senin/);
-  assert.match(html, /Kamis/);
-  assert.match(html, /H\.2\.3/);
+  assert.match(html, /KALKULUS/);
+  assert.match(html, /JUMAT/);
+  assert.equal((html.match(/FISIKA/g) ?? []).length, 2);
+  assert.equal((html.match(/KALKULUS/g) ?? []).length, 2);
+  assert.ok(html.indexOf("KALKULUS</td><td>F11.64101") < html.indexOf("FISIKA</td><td>F11.64102"));
+  assert.doesNotMatch(html, /<td>-<\/td>/);
   assert.doesNotMatch(html, /initial-access-token/);
 });
 
