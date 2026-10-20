@@ -35,7 +35,7 @@ function upstream(attendanceSchedule = { nmmk: "KALKULUS", jam_kul: 0, is_attend
     ["/api/v1/siadin/get-krs-online", { data: { jadwal: [attendanceSchedule] } }],
     ["/api/v1/siadin/get-krs-online-matr", { data: { jadwal: [] } }],
     ["/api/v1/siadin/get-krs-online-sa", { data: { jadwal: [] } }],
-    ["/api/v1/siadin/get-jadwal-hari-ini", { data: { jadwal: courseSchedules } }],
+    ["/api/v1/siadin/get-krs", { data: { krs: courseSchedules } }],
   ]);
   return async (input) => new Response(JSON.stringify(data.get(new URL(input).pathname)), {
     headers: { "content-type": "application/json" },
@@ -66,15 +66,17 @@ test("dashboard session is secure and displays both schedule sources", async () 
 
   const response = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream(
     { nmmk: "KALKULUS", jam_kul: 0, is_attend: 0 },
-    [{ nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", jam_mulai: "09:40", jam_selesai: "11:20", nmds: "Dosen Fisika", ruang: "H.2.3" }],
+    [{ nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", sks: 3, hari1: "Senin", sesi1: "09:40–11:20", ruang1: "H.2.3", hari2: "Kamis", sesi2: "07:00–08:40", ruang2: "H.3.1" }],
   ));
   const html = await response.text();
   assert.equal(response.status, 200);
   assert.match(html, /Jadwal presensi hari ini/);
-  assert.match(html, /Jadwal mata kuliah hari ini/);
+  assert.match(html, /Jadwal mata kuliah semester ini/);
   assert.match(html, /KALKULUS/);
   assert.match(html, /FISIKA/);
-  assert.match(html, /Dosen Fisika/);
+  assert.match(html, /Senin/);
+  assert.match(html, /Kamis/);
+  assert.match(html, /H\.2\.3/);
   assert.doesNotMatch(html, /initial-access-token/);
 });
 

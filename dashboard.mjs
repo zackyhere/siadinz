@@ -138,16 +138,20 @@ function nav(csrf) {
   return `<header><a href="/dashboard">Dashboard</a><a href="/settings">Settings</a><form method="post" action="/logout"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><button class="link" type="submit">Keluar</button></form></header>`;
 }
 
-function scheduleRows(schedules, includeAttendanceStatus = false) {
-  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerName || schedule.lecturerCode)}</td>${includeAttendanceStatus ? `<td><span class="status ${escapeHtml(schedule.status)}">${escapeHtml(schedule.status)}</span></td>` : `<td>${escapeHtml(schedule.room)}</td>`}</tr>`).join("");
+function attendanceRows(schedules) {
+  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerName || schedule.lecturerCode)}</td><td><span class="status ${escapeHtml(schedule.status)}">${escapeHtml(schedule.status)}</span></td></tr>`).join("");
+}
+
+function fullScheduleRows(schedules) {
+  return schedules.flatMap((course) => course.slots.map((slot) => `<tr><td>${escapeHtml(course.courseName)}</td><td>${escapeHtml(course.courseCode)}</td><td>${escapeHtml(course.classGroup)}</td><td>${escapeHtml(course.credits)}</td><td>${escapeHtml(slot.day)}</td><td>${escapeHtml(slot.session)}</td><td>${escapeHtml(slot.room)}</td></tr>`)).join("");
 }
 
 function dashboardPage(session, data, message = "") {
   const attendance = data.attendance;
   const courseSchedule = data.courseSchedule?.schedules ?? [];
-  const attendanceRows = scheduleRows(attendance.schedules, true);
-  const courseRows = scheduleRows(courseSchedule);
-  return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${attendanceRows || "<tr><td colspan=7>Tidak ada jadwal presensi.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah hari ini</h1><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Ruang</th></tr></thead><tbody>${courseRows || "<tr><td colspan=7>Data jadwal mata kuliah tidak tersedia.</td></tr>"}</tbody></table></div></section>`));
+  const presensiRows = attendanceRows(attendance.schedules);
+  const courseRows = fullScheduleRows(courseSchedule);
+  return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${presensiRows || "<tr><td colspan=7>Tidak ada jadwal presensi.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah semester ini</h1><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>SKS</th><th>Hari</th><th>Sesi</th><th>Ruang</th></tr></thead><tbody>${courseRows || "<tr><td colspan=7>Data jadwal mata kuliah tidak tersedia.</td></tr>"}</tbody></table></div></section>`));
 }
 
 function settingsPage(session, configured, message = "") {

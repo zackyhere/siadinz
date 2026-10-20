@@ -1,7 +1,7 @@
 import {
   attendAvailableSchedules,
   fetchAttendanceStatus,
-  fetchTodayCourseSchedule,
+  fetchFullCourseSchedule,
 } from "./attendance-status.mjs";
 import { effectiveCredentials, handleDashboardRequest } from "./dashboard.mjs";
 
@@ -102,7 +102,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
       if (!accessToken) throw new Error("Missing access token.");
       const [attendance, courseSchedule] = await Promise.all([
         fetchAttendanceStatus(accessToken, fetchImpl),
-        fetchTodayCourseSchedule(accessToken, fetchImpl).catch(() => ({ schedules: [] })),
+        fetchFullCourseSchedule(accessToken, fetchImpl).catch(() => ({ schedules: [] })),
       ]);
       return { attendance, courseSchedule };
     });
