@@ -138,9 +138,16 @@ function nav(csrf) {
   return `<header><a href="/dashboard">Dashboard</a><a href="/settings">Settings</a><form method="post" action="/logout"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><button class="link" type="submit">Keluar</button></form></header>`;
 }
 
-function dashboardPage(session, attendance, message = "") {
-  const rows = attendance.schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerCode)}</td><td><span class="status ${escapeHtml(schedule.status)}">${escapeHtml(schedule.status)}</span></td></tr>`).join("");
-  return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${rows || "<tr><td colspan=7>Tidak ada jadwal.</td></tr>"}</tbody></table></div></section>`));
+function scheduleRows(schedules, includeAttendanceStatus = false) {
+  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerName || schedule.lecturerCode)}</td>${includeAttendanceStatus ? `<td><span class="status ${escapeHtml(schedule.status)}">${escapeHtml(schedule.status)}</span></td>` : `<td>${escapeHtml(schedule.room)}</td>`}</tr>`).join("");
+}
+
+function dashboardPage(session, data, message = "") {
+  const attendance = data.attendance;
+  const courseSchedule = data.courseSchedule?.schedules ?? [];
+  const attendanceRows = scheduleRows(attendance.schedules, true);
+  const courseRows = scheduleRows(courseSchedule);
+  return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${attendanceRows || "<tr><td colspan=7>Tidak ada jadwal presensi.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah hari ini</h1><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Ruang</th></tr></thead><tbody>${courseRows || "<tr><td colspan=7>Data jadwal mata kuliah tidak tersedia.</td></tr>"}</tbody></table></div></section>`));
 }
 
 function settingsPage(session, configured, message = "") {
@@ -151,10 +158,14 @@ function csrfValid(request, form, session) {
   const expectedOrigin = new URL(request.url).origin;
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
+  const fetchSite = request.headers.get("sec-fetch-site");
   const sameOriginReferer = referer && (() => {
     try { return new URL(referer).origin === expectedOrigin; } catch { return false; }
   })();
-  return (origin === expectedOrigin || sameOriginReferer) && form.get("csrf") === session.csrf;
+  const browserSameOrigin = origin === expectedOrigin
+    || sameOriginReferer
+    || fetchSite === "same-origin";
+  return browserSameOrigin && form.get("csrf") === session.csrf;
 }
 
 export async function handleDashboardRequest(request, env, attendanceLoader) {
@@ -201,7 +212,7 @@ export async function handleDashboardRequest(request, env, attendanceLoader) {
     }
   }
   if (url.pathname === "/" || url.pathname === "/dashboard") {
-    try { return dashboardPage(session, await attendanceLoader()); } catch { return dashboardPage(session, { state: "error", schedules: [] }, "Jadwal tidak dapat dimuat."); }
+    try { return dashboardPage(session, await attendanceLoader()); } catch { return dashboardPage(session, { attendance: { state: "error", schedules: [] }, courseSchedule: { schedules: [] } }, "Jadwal tidak dapat dimuat."); }
   }
   return responseHtml(layout("Not found", "<section class=card><h1>Not found</h1></section>"), 404);
 }

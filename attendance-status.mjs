@@ -107,6 +107,48 @@ export function summarizeAttendance(sourcePayloads) {
   };
 }
 
+function asTodayScheduleArray(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.jadwal)) return data.jadwal;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+function publicTodaySchedule(schedule) {
+  return {
+    courseName: schedule.nmmk ?? schedule.nama_mk ?? schedule.nama_matakuliah ?? null,
+    courseCode: schedule.kdmk ?? schedule.kode_mk ?? null,
+    classGroup: schedule.klpk ?? schedule.kelas ?? null,
+    date: schedule.tgl_kuliah ?? schedule.tanggal ?? null,
+    startTime: schedule.jam_mulai ?? schedule.jam ?? null,
+    endTime: schedule.jam_selesai ?? null,
+    lecturerCode: schedule.kdds ?? schedule.kode_dosen ?? null,
+    lecturerName: schedule.nmds ?? schedule.nama_dosen ?? null,
+    room: schedule.ruang ?? schedule.ruangan ?? null,
+    details: schedule,
+  };
+}
+
+export async function fetchTodayCourseSchedule(accessToken, fetchImpl = fetch) {
+  const response = await fetchImpl(new URL("/api/v1/siadin/get-jadwal-hari-ini", API_ORIGIN), {
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${accessToken}`,
+      "user-agent": USER_AGENT,
+    },
+  });
+  const contentType = response.headers.get("content-type") ?? "";
+  const body = await response.text();
+  if (!response.ok) throw new Error(`today course schedule request returned HTTP ${response.status}.`);
+  if (!contentType.includes("application/json")) throw new Error("today course schedule request did not return JSON.");
+
+  let payload;
+  try { payload = JSON.parse(body); } catch { throw new Error("today course schedule response contained invalid JSON."); }
+  const data = payload?.data;
+  if (data === undefined) throw new Error("Unexpected today course schedule response shape.");
+  return { schedules: asTodayScheduleArray(data).map(publicTodaySchedule), details: data };
+}
+
 export async function fetchAttendanceSource(source, accessToken, fetchImpl = fetch) {
   const response = await fetchImpl(new URL(source.path, API_ORIGIN), {
     headers: {

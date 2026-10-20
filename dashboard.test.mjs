@@ -30,13 +30,14 @@ function dashboardEnv(settings) {
   };
 }
 
-function upstream(schedule = { nmmk: "KALKULUS", jam_kul: 0, is_attend: 0 }) {
+function upstream(attendanceSchedule = { nmmk: "KALKULUS", jam_kul: 0, is_attend: 0 }, courseSchedules = []) {
   const data = new Map([
-    ["/api/v1/siadin/get-krs-online", { data: { jadwal: [schedule] } }],
+    ["/api/v1/siadin/get-krs-online", { data: { jadwal: [attendanceSchedule] } }],
     ["/api/v1/siadin/get-krs-online-matr", { data: { jadwal: [] } }],
     ["/api/v1/siadin/get-krs-online-sa", { data: { jadwal: [] } }],
+    ["/api/v1/siadin/get-jadwal-hari-ini", { data: { jadwal: courseSchedules } }],
   ]);
-  return async (input, init = {}) => new Response(JSON.stringify(data.get(new URL(input).pathname)), {
+  return async (input) => new Response(JSON.stringify(data.get(new URL(input).pathname)), {
     headers: { "content-type": "application/json" },
   });
 }
@@ -55,7 +56,7 @@ test("dashboard routes redirect unauthenticated users to login", async () => {
   assert.equal(response.headers.get("location"), "/login");
 });
 
-test("dashboard session is secure and displays upstream schedule data", async () => {
+test("dashboard session is secure and displays both schedule sources", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
@@ -63,10 +64,17 @@ test("dashboard session is secure and displays upstream schedule data", async ()
   assert.match(cookie, /HttpOnly; Secure; SameSite=Strict/);
   assert.match(cookie, /Max-Age=86400/);
 
-  const response = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream());
+  const response = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream(
+    { nmmk: "KALKULUS", jam_kul: 0, is_attend: 0 },
+    [{ nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", jam_mulai: "09:40", jam_selesai: "11:20", nmds: "Dosen Fisika", ruang: "H.2.3" }],
+  ));
   const html = await response.text();
   assert.equal(response.status, 200);
+  assert.match(html, /Jadwal presensi hari ini/);
+  assert.match(html, /Jadwal mata kuliah hari ini/);
   assert.match(html, /KALKULUS/);
+  assert.match(html, /FISIKA/);
+  assert.match(html, /Dosen Fisika/);
   assert.doesNotMatch(html, /initial-access-token/);
 });
 
@@ -125,4 +133,18 @@ test("settings renders a recovery page when stored ciphertext is invalid", async
 
   assert.equal(response.status, 200);
   assert.match(html, /Kredensial tersimpan tidak dapat didekripsi/);
+});
+
+test("settings accepts same-origin Sec-Fetch-Site when Origin and Referer are absent", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+
+  const save = await handleRequest(formRequest("/settings", {
+    csrf, accessToken: "sec-fetch-token", apiSecret: "sec-fetch-secret",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+
+  assert.equal(save.status, 303);
 });
