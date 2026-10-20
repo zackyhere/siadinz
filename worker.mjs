@@ -2,6 +2,7 @@ import {
   attendAvailableSchedules,
   fetchAttendanceStatus,
 } from "./attendance-status.mjs";
+import { effectiveCredentials, handleDashboardRequest } from "./dashboard.mjs";
 
 const RC = {
   SUCCESS: 0,
@@ -63,19 +64,19 @@ async function recordPresensiEvent(database, outcome) {
 
 async function hasValidApiSecret(request, apiSecret) {
   const received = request.headers.get("x-api-secret");
-  if (!received || !apiSecret) return false;
+  return sameSecret(received, apiSecret);
+}
 
-  const encoder = new TextEncoder();
-  const [expected, actual] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(apiSecret)),
-    crypto.subtle.digest("SHA-256", encoder.encode(received)),
+async function sameSecret(left, right) {
+  if (!left || !right) return false;
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(left)),
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(right)),
   ]);
-  const expectedBytes = new Uint8Array(expected);
-  const actualBytes = new Uint8Array(actual);
+  const a = new Uint8Array(leftHash);
+  const b = new Uint8Array(rightHash);
   let difference = 0;
-  for (let index = 0; index < expectedBytes.length; index += 1) {
-    difference |= expectedBytes[index] ^ actualBytes[index];
-  }
+  for (let index = 0; index < a.length; index += 1) difference |= a[index] ^ b[index];
   return difference === 0;
 }
 
@@ -93,26 +94,42 @@ function upstreamFailure(error) {
 }
 
 export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
-  if (!env.PRESENSI_ACCESS_TOKEN || !env.PRESENSI_API_SECRET || !env.DB) {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith("/api/")) {
+    return handleDashboardRequest(request, env, async () => {
+      const { accessToken } = await effectiveCredentials(env);
+      if (!accessToken) throw new Error("Missing access token.");
+      return fetchAttendanceStatus(accessToken, fetchImpl);
+    });
+  }
+
+  if (!env.CONFIG_ENCRYPTION_KEY || !env.DB) {
     return json(500, failureBody(
       RC.SERVER_MISCONFIGURED,
       "server_misconfigured",
-      "Worker secrets or D1 binding are not configured.",
+      "Worker encryption secret or D1 binding is not configured.",
     ));
   }
 
-  if (!await hasValidApiSecret(request, env.PRESENSI_API_SECRET)) {
+  const credentials = await effectiveCredentials(env);
+  if (!credentials.accessToken || !credentials.apiSecret) {
+    return json(500, failureBody(
+      RC.SERVER_MISCONFIGURED,
+      "server_misconfigured",
+      "Attendance credentials are not configured.",
+    ));
+  }
+
+  if (!await hasValidApiSecret(request, credentials.apiSecret)) {
     return json(401, failureBody(
       RC.UNAUTHORIZED,
       "unauthorized",
       "A valid X-API-Secret header is required.",
     ));
   }
-
-  const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/v1/jadwal") {
     try {
-      const attendance = await fetchAttendanceStatus(env.PRESENSI_ACCESS_TOKEN, fetchImpl);
+      const attendance = await fetchAttendanceStatus(credentials.accessToken, fetchImpl);
       return json(200, {
         status: "success",
         rc: RC.SUCCESS,
@@ -128,7 +145,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
   if (request.method === "POST" && url.pathname === "/api/v1/presensi") {
     let outcome;
     try {
-      const attendance = await attendAvailableSchedules(env.PRESENSI_ACCESS_TOKEN, fetchImpl);
+      const attendance = await attendAvailableSchedules(credentials.accessToken, fetchImpl);
       outcome = attendance.attempted.length === 0
         ? {
           httpStatus: 200,

@@ -4,6 +4,6 @@ compatibility_date = "2026-10-19"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "presensi-api"
+database_name = "siadin"
 database_id = "96252419-c5c7-42ad-b18b-b68b9977fa28"
 migrations_dir = "migrations"

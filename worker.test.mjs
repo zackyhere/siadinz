@@ -3,12 +3,16 @@ import test from "node:test";
 
 import { handleRequest } from "./worker.mjs";
 
-function auditDatabase(events = []) {
+const encryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+function testDatabase(events = [], settings = new Map()) {
   return {
-    prepare: () => ({
+    prepare: (statement) => ({
       bind: (...values) => ({
+        first: async () => settings.has(values[0]) ? { ciphertext: settings.get(values[0]) } : null,
         run: async () => {
-          events.push(values);
+          if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
+          else events.push(values);
           return { success: true };
         },
       }),
@@ -19,7 +23,8 @@ function auditDatabase(events = []) {
 const env = {
   PRESENSI_ACCESS_TOKEN: "test-token",
   PRESENSI_API_SECRET: "test-api-secret",
-  DB: auditDatabase(),
+  CONFIG_ENCRYPTION_KEY: encryptionKey,
+  DB: testDatabase(),
 };
 
 function jsonResponse(body, status = 200) {
@@ -89,7 +94,7 @@ test("Worker does not submit unavailable schedules", async () => {
 
 test("Worker writes a D1 audit event for no available attendance", async () => {
   const events = [];
-  const testEnv = { ...env, DB: auditDatabase(events) };
+  const testEnv = { ...env, DB: testDatabase(events) };
   const fetchImpl = async (input) =>
     jsonResponse(payloads([{ jam_kul: 0, is_attend: 0 }]).get(new URL(input).pathname));
 
