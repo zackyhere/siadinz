@@ -5,5 +5,5 @@ compatibility_date = "2026-10-19"
 [[d1_databases]]
 binding = "DB"
 database_name = "siadin"
-database_id = "96252419-c5c7-42ad-b18b-b68b9977fa28"
+database_id = "de360e00-75e0-41f6-a88a-c925e26aa2db"
 migrations_dir = "migrations"
