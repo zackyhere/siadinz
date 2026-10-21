@@ -1,8 +1,7 @@
 import { renderLogin } from "./pages/auth.mjs";
 import { renderDashboard } from "./pages/dashboard.mjs";
+import { renderNotifications } from "./pages/notifications.mjs";
 import { renderSettings } from "./pages/settings.mjs";
-import { renderTokenPage } from "./pages/token.mjs";
-import { renderWebhook } from "./pages/webhook.mjs";
 import { dashboardCss, redirect, renderPage } from "./partials/layout.mjs";
 
 const COOKIE = "__Host-siadinz_session";
@@ -135,7 +134,7 @@ function sessionCookie(value, maxAge) {
   return `${COOKIE}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Strict`;
 }
 
-export async function handleDashboardRequest(request, env, loadDashboard, tokenFetcher, automation = {}) {
+export async function handleDashboardRequest(request, env, loadDashboard, attendCourse, automation = {}) {
   const url = new URL(request.url);
   if (!env.DASHBOARD_PASSWORD || !env.SESSION_SIGNING_KEY || !env.CONFIG_ENCRYPTION_KEY) {
     return renderPage("Configuration error", "<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>", 500);
@@ -184,36 +183,34 @@ export async function handleDashboardRequest(request, env, loadDashboard, tokenF
     }
   }
 
-  if (url.pathname === "/webhook" && request.method === "GET") return renderWebhook(session, await automation.webhookConfig());
-  if (url.pathname === "/webhook" && request.method === "POST") {
-    const form = await request.formData();
-    if (!hasValidCsrf(request, form, session)) return forbidden();
-    await automation.saveWebhook(String(form.get("url") ?? "").trim(), {
-      DISCORD_WEBHOOK_PRESENSI_ENABLED: form.get("presensi") === "on",
-      DISCORD_WEBHOOK_API_PRESENSI_ENABLED: form.get("apiPresensi") === "on",
-      DISCORD_WEBHOOK_SETTINGS_ENABLED: form.get("settings") === "on",
-      DISCORD_WEBHOOK_TOKEN_REFRESH_ENABLED: form.get("tokenRefresh") === "on",
-    });
-    return redirect("/webhook");
-  }
-
-  if (["/skip", "/skip/cancel"].includes(url.pathname) && request.method === "POST") {
-    const form = await request.formData();
-    if (!hasValidCsrf(request, form, session)) return forbidden();
-    const key = String(form.get("key") ?? "");
-    if (url.pathname === "/skip") await automation.skip(key);
-    else await automation.unskip(key);
-    return redirect("/dashboard");
-  }
-
-  if (url.pathname === "/gettoken" && request.method === "GET") return renderTokenPage(session);
-  if (url.pathname === "/gettoken" && request.method === "POST") {
+  if (url.pathname === "/notifications" && request.method === "GET") return renderNotifications(session, await automation.webhookConfig());
+  if (url.pathname === "/notifications" && request.method === "POST") {
     const form = await request.formData();
     if (!hasValidCsrf(request, form, session)) return forbidden();
     try {
-      return renderTokenPage(session, { accessToken: await tokenFetcher(String(form.get("username") ?? ""), String(form.get("password") ?? "")) });
-    } catch (error) {
-      return renderTokenPage(session, { error: error.message });
+      await automation.saveWebhook(String(form.get("url") ?? "").trim(), {
+        DISCORD_WEBHOOK_PRESENSI_ENABLED: form.get("presensi") === "on",
+        DISCORD_WEBHOOK_API_PRESENSI_ENABLED: form.get("apiPresensi") === "on",
+        DISCORD_WEBHOOK_SETTINGS_ENABLED: form.get("settings") === "on",
+        DISCORD_WEBHOOK_TOKEN_REFRESH_ENABLED: form.get("tokenRefresh") === "on",
+      });
+      return redirect("/notifications");
+    } catch {
+      return renderNotifications(session, await automation.webhookConfig(), "Webhook tidak dapat disimpan. Gunakan URL webhook Discord HTTPS yang valid.");
+    }
+  }
+
+  if (url.pathname === "/attendance" && request.method === "POST") {
+    const form = await request.formData();
+    if (!hasValidCsrf(request, form, session)) return forbidden();
+    const courseCode = String(form.get("courseCode") ?? "").trim();
+    const classGroup = String(form.get("classGroup") ?? "").trim();
+    if (!courseCode || !classGroup) return redirect("/dashboard");
+    try {
+      const attendance = await attendCourse(courseCode, classGroup);
+      return redirect(attendance.attempted.length ? "/dashboard?notice=presensi" : "/dashboard");
+    } catch {
+      return renderDashboard(session, await loadDashboard(), "Presensi gagal diproses. Periksa status terbaru sebelum mencoba lagi.");
     }
   }
 

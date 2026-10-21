@@ -80,7 +80,7 @@ test("dashboard session is secure and displays both schedule sources", async () 
   ));
   const html = await response.text();
   assert.equal(response.status, 200);
-  assert.match(html, /Jadwal presensi hari ini/);
+  assert.match(html, /Jadwal matkul hari ini/);
   assert.match(html, /Jadwal mata kuliah semester ini/);
   assert.match(html, /FISIKA/);
   assert.match(html, /KALKULUS/);
@@ -131,95 +131,52 @@ test("settings accepts same-origin Sec-Fetch-Site", async () => {
   assert.equal(save.status, 303);
 });
 
-test("gettoken displays only access token and posts credentials to SiAdin login", async () => {
+test("notifications replaces the retired webhook and token pages", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
-  const page = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
+  const notifications = await handleRequest(new Request("https://siadinz.example/notifications", { headers: { cookie } }), env, upstream());
+  const html = await notifications.text();
+  const token = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
+  const webhook = await handleRequest(new Request("https://siadinz.example/webhook", { headers: { cookie } }), env, upstream());
+
+  assert.equal(notifications.status, 200);
+  assert.match(html, /Notifikasi perangkat/);
+  assert.match(html, /Webhook Discord/);
+  assert.match(html, /data-request-notification/);
+  assert.equal(token.status, 404);
+  assert.equal(webhook.status, 404);
+});
+
+test("dashboard attendance route submits only the CSRF-authorized selected course", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream());
   const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
-  let loginRequest;
-
-  const response = await handleRequest(formRequest("/gettoken", {
-    csrf, username: "F11.2026.00245", password: "secret-password",
-  }, { cookie, "sec-fetch-site": "same-origin" }), env, async (input, init) => {
-    if (String(input) === "https://api.dinus.ac.id/api/v1/siadin/login") {
-      loginRequest = init;
-      return new Response(JSON.stringify({ data: { access_token: "access-token-for-testing-123" } }), {
-        headers: { "content-type": "application/json" },
-      });
-    }
-    return upstream()(input, init);
-  });
-  const html = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.match(html, /access-token-for-testing-123/);
-  assert.doesNotMatch(html, /secret-password/);
-  assert.equal(loginRequest.method, "POST");
-  assert.deepEqual(JSON.parse(loginRequest.body), { username: "F11.2026.00245", password: "secret-password" });
-});
-
-test("gettoken rejects cross-site form posts before upstream login", async () => {
-  const env = dashboardEnv();
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-  const page = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
-  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
-  let upstreamCalls = 0;
-
-  const response = await handleRequest(formRequest("/gettoken", {
-    csrf, username: "student", password: "password",
-  }, { cookie, origin: "https://attacker.example" }), env, async () => {
-    upstreamCalls += 1;
-    return new Response("{}", { headers: { "content-type": "application/json" } });
-  });
-
-  assert.equal(response.status, 403);
-  assert.equal(upstreamCalls, 0);
-});
-
-test("skip controls render only for the current WIB schedule slot", async () => {
-  const env = dashboardEnv();
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-  const attendance = { state: "unavailable", schedules: [], skippedKeys: [], todaySlotKeys: ["F11.64103\u0000F11.C101\u0000RABU\u000010.20-12.00\u0000Lab 1"] };
-  const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
-    { day: "SELASA", session: "08.40-10.20", room: "A2.3", weekdayOrder: 2, startTimeOrder: 520 },
-    { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
-  ] }] };
+  let selected;
   const { handleDashboardRequest } = await import("../frontend/dashboard.mjs");
-  const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
-  const html = await response.text();
 
-  assert.equal((html.match(/Skip hari ini/g) ?? []).length, 1);
-  assert.match(html, /RABU/);
-  assert.match(html, /name="key" value="v1:%5B%22F11\.64103%22%2C%22F11\.C101%22%5D"/);
+  const response = await handleDashboardRequest(formRequest("/attendance", {
+    csrf,
+    courseCode: "F11.64103",
+    classGroup: "F11.C101",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, async () => ({ attendance: { schedules: [], todaySlotKeys: [] }, courseSchedule: { schedules: [] } }), async (courseCode, classGroup) => {
+    selected = { courseCode, classGroup };
+    return { attempted: [{ courseCode, classGroup }] };
+  }, {});
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "/dashboard?notice=presensi");
+  assert.deepEqual(selected, { courseCode: "F11.64103", classGroup: "F11.C101" });
 });
 
-test("dashboard preserves a malformed legacy daily course skip after refresh", async () => {
-  const env = dashboardEnv();
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-  const courseKey = "F11.64103\u0000F11.C101";
-  const attendance = { state: "unavailable", schedules: [], skippedKeys: [courseKey.replace("\u0000", "\uFFFD")], todaySlotKeys: [`${courseKey}\u0000RABU\u000010.20-12.00\u0000Lab 1`] };
-  const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
-    { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
-  ] }] };
-  const { handleDashboardRequest } = await import("../frontend/dashboard.mjs");
-  const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
-  const html = await response.text();
-
-  assert.match(html, /action="\/skip\/cancel"/);
-  assert.match(html, /Tidak jadi skip/);
-  assert.doesNotMatch(html, />Skip hari ini</);
-});
-
-test("dashboard serves same-origin no-refresh skip control script", async () => {
+test("dashboard serves notification and logout control script", async () => {
   const response = await handleRequest(new Request("https://siadinz.example/dashboard.js"), dashboardEnv(), upstream());
   const script = await response.text();
 
   assert.equal(response.status, 200);
-  assert.match(script, /event\.preventDefault\(\)/);
-  assert.match(script, /credentials: "same-origin"/);
-  assert.match(script, /Tidak jadi skip/);
+  assert.match(script, /showModal/);
+  assert.match(script, /Notification\.requestPermission/);
+  assert.match(script, /localStorage/);
 });

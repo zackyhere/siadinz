@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  attendAvailableCourse,
   attendAvailableSchedules,
   classifySchedule,
   summarizeAttendance,
@@ -103,6 +104,29 @@ test("submits each available schedule once then verifies it", async () => {
     classGroup: "F11.C101", date: "19 October 2026", idMaster: "42",
   }]);
   assert.equal(requests.filter(({ method }) => method === "POST").length, 1);
+});
+
+test("submits only the selected available course then verifies it", async () => {
+  const selected = { nmmk: "KALKULUS", kdmk: "F11.64101", klpk: "F11.C101", tgl_kuliah: "21 October 2026", jam_kul: 1, is_attend: 0, id_master: 42, kdds: "D001" };
+  const other = { nmmk: "FISIKA", kdmk: "F11.64102", klpk: "F11.C101", tgl_kuliah: "21 October 2026", jam_kul: 1, is_attend: 0, id_master: 43, kdds: "D002" };
+  let verified = false;
+  const posts = [];
+  const fetchImpl = async (input, init = {}) => {
+    const url = new URL(input).pathname;
+    if (url === "/api/v1/siadin/absensi-online") {
+      posts.push(JSON.parse(init.body));
+      verified = true;
+      return jsonResponse({ code: 200 });
+    }
+    const current = verified ? [{ ...selected, is_attend: 1 }, other] : [selected, other];
+    return jsonResponse(sourcePayloads(current).get(url));
+  };
+
+  const result = await attendAvailableCourse("F11.64101", "F11.C101", "token", fetchImpl);
+
+  assert.deepEqual(posts, [{ comment: "", id_master: 42, kdds: "D001" }]);
+  assert.equal(result.attempted.length, 1);
+  assert.equal(result.attempted[0].courseCode, "F11.64101");
 });
 
 test("does not submit when schedules have not started", async () => {

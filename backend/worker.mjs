@@ -1,11 +1,11 @@
-import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./services/attendance-status.mjs";
+import { attendAvailableCourse, attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./services/attendance-status.mjs";
 import { effectiveCredentials, handleDashboardRequest, writeSetting } from "../frontend/dashboard.mjs";
 import { dashboardClientScript } from "../frontend/public/dashboard-client.mjs";
 import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./services/course-hours.mjs";
 
 import {
-  accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
-  notifyDiscord, notifyDiscordPresensi, scheduleSlotKey, setDailySkip,
+  accessTokenForRequest, jakartaDate, jakartaWeekday, loginSiadin,
+  notifyDiscord, notifyDiscordPresensi, scheduleSlotKey,
   skippedScheduleKeys, webhookConfiguration,
 } from "./services/automation.mjs";
 
@@ -39,8 +39,6 @@ function dashboardAutomation(env, fetchImpl, ctx) {
       if (url) await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", url, env.CONFIG_ENCRYPTION_KEY);
       for (const [key, value] of Object.entries(toggles)) await writeSetting(env.DB, key, String(value), env.CONFIG_ENCRYPTION_KEY);
     },
-    skip: (key) => setDailySkip(env.DB, key, jakartaDate()),
-    unskip: (key) => clearDailySkip(env.DB, key, jakartaDate()),
     notify,
   };
 }
@@ -53,7 +51,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
         headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" },
       });
     }
-    return handleDashboardRequest(request, env, async () => withSiadinToken(env, fetchImpl, async (token) => {
+    const loadDashboard = async () => withSiadinToken(env, fetchImpl, async (token) => {
       const courseSchedulePromise = fetchFullCourseSchedule(token, fetchImpl)
         .then(async (schedule) => { await cacheCourseSchedule(env.DB, schedule); return schedule; })
         .catch(() => ({ schedules: [] }));
@@ -67,7 +65,14 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
         .filter((slot) => slot.day.toLocaleUpperCase("id-ID") === weekday)
         .map((slot) => scheduleSlotKey(course.courseCode, course.classGroup, slot.day, slot.session, slot.room))));
       return { attendance: { ...attendance, skippedKeys: [...skippedKeys], todaySlotKeys: [...todaySlotKeys] }, courseSchedule };
-    }, ctx), (username, password) => loginSiadin(username, password, fetchImpl), dashboardAutomation(env, fetchImpl, ctx));
+    }, ctx);
+    const attendCourse = async (courseCode, classGroup) => {
+      const skipped = await skippedScheduleKeys(env.DB, jakartaDate());
+      const attendance = await withSiadinToken(env, fetchImpl, (token) => attendAvailableCourse(courseCode, classGroup, token, fetchImpl, skipped), ctx);
+      if (attendance.attempted.length) background(ctx, notifyDiscordPresensi(env, attendance, fetchImpl));
+      return attendance;
+    };
+    return handleDashboardRequest(request, env, loadDashboard, attendCourse, dashboardAutomation(env, fetchImpl, ctx));
   }
 
   if (!env.CONFIG_ENCRYPTION_KEY || !env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Worker encryption secret or D1 binding is not configured."));

@@ -263,3 +263,20 @@ export async function attendAvailableSchedules(accessToken, fetchImpl = fetch, s
 
   return { attempted, ...summarizeAttendance(after) };
 }
+
+export async function attendAvailableCourse(courseCode, classGroup, accessToken, fetchImpl = fetch, skippedIds = new Set()) {
+  const before = await fetchAttendanceSources(accessToken, fetchImpl);
+  const matchesCourse = ({ schedule }) => String(schedule.kdmk ?? "").trim() === String(courseCode ?? "").trim()
+    && String(schedule.klpk ?? "").trim() === String(classGroup ?? "").trim();
+  const candidates = eligibleSchedules(before, skippedIds).filter(matchesCourse);
+  const attempted = candidates.map(attendanceIdentity);
+
+  if (candidates.length === 0) return { attempted, ...summarizeAttendance(before) };
+
+  for (const candidate of candidates) await submitAttendance(candidate, accessToken, fetchImpl);
+
+  const after = await fetchAttendanceSources(accessToken, fetchImpl);
+  const unconfirmed = attempted.filter((identity) => !isAttendanceConfirmed(identity, after));
+  if (unconfirmed.length > 0) throw new Error("Attendance submission completed, but status verification did not confirm every selected course.");
+  return { attempted, ...summarizeAttendance(after) };
+}
