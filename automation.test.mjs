@@ -25,7 +25,9 @@ function database(settings = new Map(), skips = new Set()) {
         run: async () => {
           if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
           if (statement.includes("INSERT OR IGNORE INTO presensi_skips")) skips.add(`${values[0]}\u0000${values[1]}`);
-          if (statement.includes("DELETE FROM presensi_skips")) skips.delete(`${values[0]}\u0000${values[1]}`);
+          if (statement.includes("DELETE FROM presensi_skips")) {
+            for (const entry of skips) if (entry.endsWith(`\u0000${values[0]}`) && (entry.startsWith(`${values[1]}\u0000`) || entry === `${values[1]}\u0000${values[0]}`)) skips.delete(entry);
+          }
           return { success: true };
         },
       }),
@@ -68,6 +70,15 @@ test("daily skip applies only to its Jakarta date", async () => {
   assert.deepEqual([...await skippedMasterIds(db, "2026-10-22")], []);
   await clearDailySkip(db, "132649", "2026-10-21");
   assert.deepEqual([...await skippedMasterIds(db, "2026-10-21")], []);
+});
+
+test("cancelling a course skip removes legacy slot skips", async () => {
+  const skips = new Set(["F11.64103\u0000F11.C101\u0000RABU\u000010.20-12.00\u0000Lab 1\u00002026-10-21"]);
+  const db = database(new Map(), skips);
+
+  await clearDailySkip(db, "F11.64103\u0000F11.C101", "2026-10-21");
+
+  assert.deepEqual([...skips], []);
 });
 
 test("Discord notification posts only when configured and attendance succeeded", async () => {

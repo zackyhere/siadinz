@@ -16,7 +16,9 @@ function database(settings = new Map(), skips = new Set()) {
         run: async () => {
           if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
           else if (statement.includes("INSERT OR IGNORE INTO presensi_skips")) skips.add(`${values[0]}\u0000${values[1]}`);
-          else if (statement.includes("DELETE FROM presensi_skips")) skips.delete(`${values[0]}\u0000${values[1]}`);
+          else if (statement.includes("DELETE FROM presensi_skips")) {
+            for (const value of skips) if (value.endsWith(`\u0000${values[0]}`) && (value.startsWith(`${values[1]}\u0000`) || value === `${values[1]}\u0000${values[0]}`)) skips.delete(value);
+          }
           return { success: true };
         },
       }),
@@ -194,6 +196,24 @@ test("skip controls render only for the current WIB schedule slot", async () => 
 
   assert.equal((html.match(/Skip hari ini/g) ?? []).length, 1);
   assert.match(html, /RABU/);
+});
+
+test("dashboard preserves a daily course skip after refresh", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const courseKey = "F11.64103\u0000F11.C101";
+  const attendance = { state: "unavailable", schedules: [], skippedKeys: [courseKey], todaySlotKeys: [`${courseKey}\u0000RABU\u000010.20-12.00\u0000Lab 1`] };
+  const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
+    { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
+  ] }] };
+  const { handleDashboardRequest } = await import("./dashboard.mjs");
+  const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
+  const html = await response.text();
+
+  assert.match(html, /action="\/skip\/cancel"/);
+  assert.match(html, /Tidak jadi skip/);
+  assert.doesNotMatch(html, />Skip hari ini</);
 });
 
 test("dashboard serves same-origin no-refresh skip control script", async () => {

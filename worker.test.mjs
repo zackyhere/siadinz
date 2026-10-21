@@ -16,8 +16,9 @@ function testDatabase(events = [], settings = new Map(), skips = new Set()) {
         run: async () => {
           if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
           else if (statement.includes("INSERT OR IGNORE INTO presensi_skips")) skips.add(`${values[0]}\u0000${values[1]}`);
-          else if (statement.includes("DELETE FROM presensi_skips")) skips.delete(`${values[0]}\u0000${values[1]}`);
-          else events.push(values);
+          else if (statement.includes("DELETE FROM presensi_skips")) {
+            for (const value of skips) if (value.endsWith(`\u0000${values[0]}`) && (value.startsWith(`${values[1]}\u0000`) || value === `${values[1]}\u0000${values[0]}`)) skips.delete(value);
+          } else events.push(values);
           return { success: true };
         },
       }),
