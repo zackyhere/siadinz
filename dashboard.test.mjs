@@ -178,3 +178,30 @@ test("gettoken rejects cross-site form posts before upstream login", async () =>
   assert.equal(response.status, 403);
   assert.equal(upstreamCalls, 0);
 });
+
+test("skip controls render only for the current WIB schedule slot", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const attendance = { state: "unavailable", schedules: [], skippedKeys: [], todaySlotKeys: ["F11.64103\u0000F11.C101\u0000RABU\u000010.20-12.00\u0000Lab 1"] };
+  const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
+    { day: "SELASA", session: "08.40-10.20", room: "A2.3", weekdayOrder: 2, startTimeOrder: 520 },
+    { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
+  ] }] };
+  const { handleDashboardRequest } = await import("./dashboard.mjs");
+  const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
+  const html = await response.text();
+
+  assert.equal((html.match(/Skip hari ini/g) ?? []).length, 1);
+  assert.match(html, /RABU/);
+});
+
+test("dashboard serves same-origin no-refresh skip control script", async () => {
+  const response = await handleRequest(new Request("https://siadinz.example/dashboard.js"), dashboardEnv(), upstream());
+  const script = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(script, /event\.preventDefault\(\)/);
+  assert.match(script, /credentials: "same-origin"/);
+  assert.match(script, /Tidak jadi skip/);
+});

@@ -32,6 +32,7 @@ export async function accessTokenForRequest(env, fetchImpl = fetch, forceRefresh
 export function jakartaDate(now = new Date()) { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(now); }
 export function jakartaWeekday(now = new Date()) { return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", weekday: "long" }).format(now).toLocaleUpperCase("id-ID"); }
 export function scheduleKey(courseCode, classGroup) { return `${String(courseCode ?? "").trim()}\u0000${String(classGroup ?? "").trim()}`; }
+export function scheduleSlotKey(courseCode, classGroup, day, session, room) { return `${scheduleKey(courseCode, classGroup)}\u0000${String(day ?? "").trim()}\u0000${String(session ?? "").trim()}\u0000${String(room ?? "").trim()}`; }
 export async function skippedScheduleKeys(database, day) { const result = await database.prepare("SELECT id_master FROM presensi_skips WHERE skip_date = ?").bind(day).all(); return new Set((result.results ?? []).map(({ id_master }) => String(id_master))); }
 export async function setDailySkip(database, key, day) { await database.prepare("INSERT OR IGNORE INTO presensi_skips (id_master, skip_date, created_at) VALUES (?, ?, ?)").bind(key, day, new Date().toISOString()).run(); }
 export async function clearDailySkip(database, key, day) { await database.prepare("DELETE FROM presensi_skips WHERE id_master = ? AND skip_date = ?").bind(key, day).run(); }

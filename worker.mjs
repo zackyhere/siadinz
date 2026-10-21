@@ -1,8 +1,8 @@
 import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./attendance-status.mjs";
-import { effectiveCredentials, handleDashboardRequest, writeSetting } from "./dashboard.mjs";
+import { effectiveCredentials, handleDashboardRequest, writeSetting, dashboardClientScript } from "./dashboard.mjs";
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
-  notifyDiscord, notifyDiscordPresensi, scheduleKey, setDailySkip,
+  notifyDiscord, notifyDiscordPresensi, scheduleSlotKey, setDailySkip,
   skippedScheduleKeys, webhookConfiguration,
 } from "./automation.mjs";
 
@@ -45,6 +45,12 @@ function dashboardAutomation(env, fetchImpl, ctx) {
 export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
+
+  if (url.pathname === "/dashboard.js") {
+    return new Response(dashboardClientScript, {
+      headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" },
+    });
+  }
     return handleDashboardRequest(request, env, async () => withSiadinToken(env, fetchImpl, async (token) => {
       const [attendance, courseSchedule, skippedKeys] = await Promise.all([
         fetchAttendanceStatus(token, fetchImpl),
@@ -52,10 +58,10 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
         skippedScheduleKeys(env.DB, jakartaDate()),
       ]);
       const weekday = jakartaWeekday();
-      const todayCourseKeys = new Set((courseSchedule.schedules ?? [])
-        .filter((course) => course.slots.some((slot) => slot.day.toLocaleUpperCase("id-ID") === weekday))
-        .map((course) => scheduleKey(course.courseCode, course.classGroup)));
-      return { attendance: { ...attendance, skippedKeys: [...skippedKeys], todayCourseKeys: [...todayCourseKeys] }, courseSchedule };
+      const todaySlotKeys = new Set((courseSchedule.schedules ?? []).flatMap((course) => course.slots
+        .filter((slot) => slot.day.toLocaleUpperCase("id-ID") === weekday)
+        .map((slot) => scheduleSlotKey(course.courseCode, course.classGroup, slot.day, slot.session, slot.room))));
+      return { attendance: { ...attendance, skippedKeys: [...skippedKeys], todaySlotKeys: [...todaySlotKeys] }, courseSchedule };
     }, ctx), (username, password) => loginSiadin(username, password, fetchImpl), dashboardAutomation(env, fetchImpl, ctx));
   }
 

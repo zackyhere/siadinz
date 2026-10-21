@@ -57,7 +57,10 @@ function eligibleSchedules(sourcePayloads, skippedKeys = new Set()) {
   return sourcePayloads.flatMap(({ source, payload }) =>
     asScheduleArray(payload, source)
       .filter((schedule) => classifySchedule(schedule) === "available")
-      .filter((schedule) => !skippedKeys.has(`${String(schedule.kdmk ?? "").trim()}\u0000${String(schedule.klpk ?? "").trim()}`))
+      .filter((schedule) => {
+        const courseKey = `${String(schedule.kdmk ?? "").trim()}\u0000${String(schedule.klpk ?? "").trim()}\u0000`;
+        return ![...skippedKeys].some((key) => key.startsWith(courseKey));
+      })
       .map((schedule) => ({ source, schedule })),
   );
 }
