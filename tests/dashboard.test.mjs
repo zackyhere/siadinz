@@ -63,6 +63,25 @@ test("dashboard routes redirect unauthenticated users to login", async () => {
   assert.equal(response.headers.get("location"), "/login");
 });
 
+test("zero-variable bootstrap accepts 123456 and preserves a dashboard password saved in D1", async () => {
+  const settings = new Map();
+  const env = { DB: database(settings) };
+  const login = await handleRequest(formRequest("/login", { password: "123456" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  assert.equal(login.status, 303);
+
+  const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+  const save = await handleRequest(formRequest("/settings", { csrf, scope: "dashboardPassword", dashboardPassword: "new-dashboard-password" }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  assert.equal(save.status, 303);
+  assert.notEqual(settings.get("DASHBOARD_PASSWORD"), "new-dashboard-password");
+
+  const oldPassword = await handleRequest(formRequest("/login", { password: "123456" }), env, upstream());
+  const newPassword = await handleRequest(formRequest("/login", { password: "new-dashboard-password" }), env, upstream());
+  assert.equal(oldPassword.status, 200);
+  assert.equal(newPassword.status, 303);
+});
+
 test("dashboard session is secure and displays both schedule sources", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());

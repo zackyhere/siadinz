@@ -7,10 +7,11 @@ import { dashboardCss, redirect, renderPage } from "./partials/layout.mjs";
 
 const COOKIE = "__Host-siadinz_session";
 const SESSION_TTL_MS = 86_400_000;
+const DEFAULT_DASHBOARD_PASSWORD = "123456";
+const DEFAULT_SESSION_SIGNING_KEY = "siadinz-bootstrap-session-signing-key-v1";
+const DEFAULT_CONFIG_ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-
-export { dashboardCss };
 
 
 function base64Url(bytes) {
@@ -113,14 +114,29 @@ export async function writeSetting(database, key, value, secret) {
     .bind(key, ciphertext, new Date().toISOString()).run();
 }
 
+export function configuration(env) {
+  return {
+    encryptionKey: env.CONFIG_ENCRYPTION_KEY || DEFAULT_CONFIG_ENCRYPTION_KEY,
+    sessionSigningKey: env.SESSION_SIGNING_KEY || DEFAULT_SESSION_SIGNING_KEY,
+  };
+}
+
 export async function effectiveCredentials(env) {
-  const [accessToken, apiSecret, username, password] = await Promise.all([
-    readSetting(env.DB, "PRESENSI_ACCESS_TOKEN", env.CONFIG_ENCRYPTION_KEY),
-    readSetting(env.DB, "PRESENSI_API_SECRET", env.CONFIG_ENCRYPTION_KEY),
-    readSetting(env.DB, "SIADIN_USERNAME", env.CONFIG_ENCRYPTION_KEY),
-    readSetting(env.DB, "SIADIN_PASSWORD", env.CONFIG_ENCRYPTION_KEY),
+  const { encryptionKey } = configuration(env);
+  const [accessToken, apiSecret, username, password, dashboardPassword] = await Promise.all([
+    readSetting(env.DB, "PRESENSI_ACCESS_TOKEN", encryptionKey),
+    readSetting(env.DB, "PRESENSI_API_SECRET", encryptionKey),
+    readSetting(env.DB, "SIADIN_USERNAME", encryptionKey),
+    readSetting(env.DB, "SIADIN_PASSWORD", encryptionKey),
+    readSetting(env.DB, "DASHBOARD_PASSWORD", encryptionKey),
   ]);
-  return { accessToken: accessToken || env.PRESENSI_ACCESS_TOKEN, apiSecret: apiSecret || env.PRESENSI_API_SECRET, username, password };
+  return { accessToken: accessToken || env.PRESENSI_ACCESS_TOKEN, apiSecret: apiSecret || env.PRESENSI_API_SECRET, username, password, dashboardPassword: dashboardPassword || env.DASHBOARD_PASSWORD || DEFAULT_DASHBOARD_PASSWORD };
+}
+
+async function effectiveDashboardPassword(env) {
+  const { encryptionKey } = configuration(env);
+  const password = await readSetting(env.DB, "DASHBOARD_PASSWORD", encryptionKey);
+  return password || env.DASHBOARD_PASSWORD || DEFAULT_DASHBOARD_PASSWORD;
 }
 
 function forbidden() {
@@ -137,18 +153,23 @@ function sessionCookie(value, maxAge) {
 
 export async function handleDashboardRequest(request, env, loadDashboard, attendCourse, automation = {}) {
   const url = new URL(request.url);
-  if (!env.DASHBOARD_PASSWORD || !env.SESSION_SIGNING_KEY || !env.CONFIG_ENCRYPTION_KEY) {
-    return renderPage("Configuration error", "<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>", 500);
+  if (!env.DB) return renderPage("Configuration error", "<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>", 500);
+  const { encryptionKey, sessionSigningKey } = configuration(env);
+  let dashboardPassword;
+  try {
+    dashboardPassword = await effectiveDashboardPassword(env);
+  } catch {
+    return renderPage("Configuration error", "<section class=card><h1>Konfigurasi password dashboard tidak dapat dibaca</h1></section>", 500);
   }
 
   if (url.pathname === "/login" && request.method === "GET") return renderLogin();
   if (url.pathname === "/login" && request.method === "POST") {
     const form = await request.formData();
-    if (!await same(form.get("password"), env.DASHBOARD_PASSWORD)) return renderLogin("Password salah.");
-    return redirect("/dashboard", { "set-cookie": sessionCookie(await createSession(env.SESSION_SIGNING_KEY), 86400) });
+    if (!await same(form.get("password"), dashboardPassword)) return renderLogin("Password salah.");
+    return redirect("/dashboard", { "set-cookie": sessionCookie(await createSession(sessionSigningKey), 86400) });
   }
 
-  const session = await verifySession(cookies(request)[COOKIE], env.SESSION_SIGNING_KEY);
+  const session = await verifySession(cookies(request)[COOKIE], sessionSigningKey);
   if (!session) return redirect("/login");
 
   if (url.pathname === "/logout" && request.method === "POST") {
@@ -185,12 +206,12 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
     if (!hasValidCsrf(request, form, session)) return forbidden();
     const scope = String(form.get("scope") || "all");
     const fields = scope === "all" ? ["username", "password", "apiSecret"] : scope === "account" ? ["username", "password"] : [scope];
-    const keys = { username: "SIADIN_USERNAME", password: "SIADIN_PASSWORD", apiSecret: "PRESENSI_API_SECRET", accessToken: "PRESENSI_ACCESS_TOKEN" };
+    const keys = { username: "SIADIN_USERNAME", password: "SIADIN_PASSWORD", apiSecret: "PRESENSI_API_SECRET", accessToken: "PRESENSI_ACCESS_TOKEN", dashboardPassword: "DASHBOARD_PASSWORD" };
     try {
       for (const field of fields) {
         const value = String(form.get(field) ?? "").trim();
         if (!value || !keys[field]) throw new Error("Invalid setting.");
-        await writeSetting(env.DB, keys[field], value, env.CONFIG_ENCRYPTION_KEY);
+        await writeSetting(env.DB, keys[field], value, encryptionKey);
       }
       automation.notify?.("settings", "⚙️ Settings diperbarui.");
       return redirect("/settings?notice=settings");

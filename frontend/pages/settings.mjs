@@ -9,8 +9,13 @@ function secretDialog(session) {
   return `<dialog class="settings-dialog" data-settings-dialog="secret"><form method="post" action="/settings"><div class="dialog-card"><h2>API secret</h2><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="scope" value="apiSecret"><label>PRESENSI_API_SECRET<input type="password" name="apiSecret" required autofocus></label><div class="dialog-actions"><button class="button-secondary" type="button" data-close-settings>Batal</button><button>Simpan</button></div></div></form></dialog>`;
 }
 
+function dashboardPasswordDialog(session) {
+  return `<dialog class="settings-dialog" data-settings-dialog="dashboardPassword"><form method="post" action="/settings"><div class="dialog-card"><h2>Password dashboard</h2><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="scope" value="dashboardPassword"><label>Password baru<input type="password" name="dashboardPassword" required autofocus></label><div class="dialog-actions"><button class="button-secondary" type="button" data-close-settings>Batal</button><button>Simpan</button></div></div></form></dialog>`;
+}
+
 export function renderSettings(session, state, message = "") {
+  const dashboardPasswordStatus = state.dashboardPassword && state.dashboardPassword !== "123456" ? "configured" : "default";
   const accountStatus = state.username && state.password ? "configured" : "missing";
   const secretStatus = state.apiSecret ? "configured" : "missing";
-  return renderPage("Settings", `${renderNavigation(session.csrf, "settings")}${message ? `<p class="form-message">${escapeHtml(message)}</p>` : ""}<section class="settings-grid"><article class="settings-card settings-card--account"><h1>Setting akun</h1><p>${accountStatus}</p><button type="button" data-open-settings="account">Setting</button></article><article class="settings-card settings-card--secret"><h1>API secret</h1><p>${secretStatus}</p><button type="button" data-open-settings="secret">Setting</button></article></section>${accountDialog(session)}${secretDialog(session)}`);
+  return renderPage("Settings", `${renderNavigation(session.csrf, "settings")}${message ? `<p class="form-message">${escapeHtml(message)}</p>` : ""}<section class="settings-grid"><article class="settings-card settings-card--dashboard-password"><h1>Password dashboard</h1><p>${dashboardPasswordStatus}</p><button type="button" data-open-settings="dashboardPassword">Ganti password</button></article><article class="settings-card settings-card--account"><h1>Setting akun</h1><p>${accountStatus}</p><button type="button" data-open-settings="account">Setting</button></article><article class="settings-card settings-card--secret"><h1>API secret</h1><p>${secretStatus}</p><button type="button" data-open-settings="secret">Setting</button></article></section>${dashboardPasswordDialog(session)}${accountDialog(session)}${secretDialog(session)}`);
 }

@@ -1,7 +1,8 @@
 import { attendAvailableCourse, attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./services/attendance-status.mjs";
-import { effectiveCredentials, handleDashboardRequest, writeSetting } from "../frontend/dashboard.mjs";
+import { configuration, effectiveCredentials, handleDashboardRequest, writeSetting } from "../frontend/dashboard.mjs";
 import { dashboardClientScript } from "../frontend/public/dashboard-client.mjs";
 import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./services/course-hours.mjs";
+import { ensureDatabaseSchema } from "./lib/database-schema.mjs";
 
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
@@ -36,8 +37,8 @@ function dashboardAutomation(env, fetchImpl, ctx) {
     webhookConfig: () => webhookConfiguration(env),
     saveWebhook: async (url, toggles) => {
       if (url && !/^https:\/\/discord(?:app)?\.com\/api\/webhooks\//.test(url)) throw new Error("Invalid Discord webhook URL.");
-      if (url) await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", url, env.CONFIG_ENCRYPTION_KEY);
-      for (const [key, value] of Object.entries(toggles)) await writeSetting(env.DB, key, String(value), env.CONFIG_ENCRYPTION_KEY);
+      if (url) await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", url, configuration(env).encryptionKey);
+      for (const [key, value] of Object.entries(toggles)) await writeSetting(env.DB, key, String(value), configuration(env).encryptionKey);
     },
     skip: (key) => setDailySkip(env.DB, key, jakartaDate()),
     unskip: (key) => clearDailySkip(env.DB, key, jakartaDate()),
@@ -47,12 +48,19 @@ function dashboardAutomation(env, fetchImpl, ctx) {
 
 export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = new Date()) {
   const url = new URL(request.url);
-  if (!url.pathname.startsWith("/api/")) {
-    if (url.pathname === "/dashboard.js") {
-      return new Response(dashboardClientScript, {
-        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
-      });
+  if (url.pathname === "/dashboard.js") {
+    return new Response(dashboardClientScript, {
+      headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
+    });
+  }
+  if (env.DB) {
+    try { await ensureDatabaseSchema(env.DB); }
+    catch (error) {
+      console.error("Failed to initialize D1 schema:", error);
+      return url.pathname.startsWith("/api/") ? json(500, failureBody(RC.SERVER_MISCONFIGURED, "database_unavailable", "Worker D1 database is not available.")) : new Response("Database belum dapat diinisialisasi.", { status: 500 });
     }
+  }
+  if (!url.pathname.startsWith("/api/")) {
     const loadDashboard = async () => withSiadinToken(env, fetchImpl, async (token) => {
       const courseSchedulePromise = fetchFullCourseSchedule(token, fetchImpl)
         .then(async (schedule) => { await cacheCourseSchedule(env.DB, schedule); return schedule; })
@@ -77,7 +85,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
     return handleDashboardRequest(request, env, loadDashboard, attendCourse, dashboardAutomation(env, fetchImpl, ctx));
   }
 
-  if (!env.CONFIG_ENCRYPTION_KEY || !env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Worker encryption secret or D1 binding is not configured."));
+  if (!env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Worker D1 binding is not configured."));
   let apiSecret;
   try { apiSecret = (await effectiveCredentials(env)).apiSecret; } catch { return json(500, failureBody(RC.SERVER_MISCONFIGURED, "credential_configuration_invalid", "Stored attendance credentials cannot be decrypted with the current encryption key.")); }
   if (!apiSecret) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Attendance API secret is not configured."));

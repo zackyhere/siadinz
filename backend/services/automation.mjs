@@ -1,4 +1,4 @@
-import { readSetting, writeSetting } from "../../frontend/dashboard.mjs";
+import { configuration, readSetting, writeSetting } from "../../frontend/dashboard.mjs";
 import { dailySkipKeyVariants } from "../lib/skip-keys.mjs";
 
 
@@ -21,12 +21,13 @@ export async function loginSiadin(username, password, fetchImpl = fetch) {
   return token;
 }
 export async function accessTokenForRequest(env, fetchImpl = fetch, forceRefresh = false, onRefresh) {
-  const [storedToken, nim, password] = await Promise.all([readSetting(env.DB, "PRESENSI_ACCESS_TOKEN", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "SIADIN_USERNAME", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "SIADIN_PASSWORD", env.CONFIG_ENCRYPTION_KEY)]);
+  const { encryptionKey } = configuration(env);
+  const [storedToken, nim, password] = await Promise.all([readSetting(env.DB, "PRESENSI_ACCESS_TOKEN", encryptionKey), readSetting(env.DB, "SIADIN_USERNAME", encryptionKey), readSetting(env.DB, "SIADIN_PASSWORD", encryptionKey)]);
   const accessToken = storedToken || env.PRESENSI_ACCESS_TOKEN;
   if (!forceRefresh && accessToken && !tokenNeedsRefresh(accessToken)) return accessToken;
   if (!nim || !password) { if (accessToken) return accessToken; throw new Error("SiAdin credentials are missing; save NIM and password in Settings."); }
   const refreshedToken = await loginSiadin(nim, password, fetchImpl);
-  await writeSetting(env.DB, "PRESENSI_ACCESS_TOKEN", refreshedToken, env.CONFIG_ENCRYPTION_KEY);
+  await writeSetting(env.DB, "PRESENSI_ACCESS_TOKEN", refreshedToken, encryptionKey);
   await onRefresh?.();
   return refreshedToken;
 }
@@ -41,7 +42,8 @@ export async function clearDailySkip(database, key, day) { const { exact, legacy
 
 export const skippedMasterIds = skippedScheduleKeys;
 export async function webhookConfiguration(env) {
-  const [url, presensi, apiPresensi, settings, tokenRefresh] = await Promise.all([readSetting(env.DB, "DISCORD_WEBHOOK_URL", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "DISCORD_WEBHOOK_PRESENSI_ENABLED", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "DISCORD_WEBHOOK_API_PRESENSI_ENABLED", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "DISCORD_WEBHOOK_SETTINGS_ENABLED", env.CONFIG_ENCRYPTION_KEY), readSetting(env.DB, "DISCORD_WEBHOOK_TOKEN_REFRESH_ENABLED", env.CONFIG_ENCRYPTION_KEY)]);
+  const { encryptionKey } = configuration(env);
+  const [url, presensi, apiPresensi, settings, tokenRefresh] = await Promise.all([readSetting(env.DB, "DISCORD_WEBHOOK_URL", encryptionKey), readSetting(env.DB, "DISCORD_WEBHOOK_PRESENSI_ENABLED", encryptionKey), readSetting(env.DB, "DISCORD_WEBHOOK_API_PRESENSI_ENABLED", encryptionKey), readSetting(env.DB, "DISCORD_WEBHOOK_SETTINGS_ENABLED", encryptionKey), readSetting(env.DB, "DISCORD_WEBHOOK_TOKEN_REFRESH_ENABLED", encryptionKey)]);
   return { url, presensiEnabled: presensi === "true", apiPresensiEnabled: apiPresensi === "true", settingsEnabled: settings === "true", tokenRefreshEnabled: tokenRefresh === "true" };
 }
 export async function notifyDiscord(env, event, content, fetchImpl = fetch) {
