@@ -1,14 +1,13 @@
 import { escapeHtml, renderPage } from "../partials/layout.mjs";
 import { renderNavigation } from "../partials/navigation.mjs";
 
-const origin = "https://siadinz.zackyhere.workers.dev";
+const defaultOrigin = "https://siadinz.zackyhere.workers.dev";
 const maskedSecret = "*****";
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\"'\"'")}'`;
 }
-
-export function apiCommand(template, secret) {
+export function apiCommand(template, secret, origin = defaultOrigin) {
   const header = `-H ${shellQuote(`X-API-Secret: ${secret}`)}`;
   if (template === "schedule") return `curl ${header} \\
   ${origin}/api/v1/jadwal`;

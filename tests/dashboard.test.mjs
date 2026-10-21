@@ -63,19 +63,42 @@ test("dashboard routes redirect unauthenticated users to login", async () => {
   assert.equal(response.headers.get("location"), "/login");
 });
 
-test("zero-variable bootstrap accepts 123456 and preserves a dashboard password in Worker storage", async () => {
+
+test("default dashboard credentials force quick setup until the generated API command is acknowledged", async () => {
   const settings = new Map();
   const env = { DB: database(settings) };
   const login = await handleRequest(formRequest("/login", { password: "123456" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
-  assert.equal(login.status, 303);
+  const dashboard = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream());
+  assert.equal(dashboard.status, 303);
+  assert.equal(dashboard.headers.get("location"), "/quick-setup");
 
-  const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
-  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
-  const save = await handleRequest(formRequest("/settings", { csrf, scope: "dashboardPassword", dashboardPassword: "new-dashboard-password" }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  const setup = await handleRequest(new Request("https://siadinz.example/quick-setup", { headers: { cookie } }), env, upstream());
+  const setupHtml = await setup.text();
+  const csrf = /name="csrf" value="([^"]+)"/.exec(setupHtml)?.[1];
+  assert.match(setupHtml, /Siapkan dashboard/);
+  assert.match(setupHtml, /Dibuat otomatis saat disimpan/);
+
+  const save = await handleRequest(formRequest("/quick-setup/save", {
+    csrf, dashboardPassword: "new-dashboard-password", username: "F11.2026.00245", password: "siadin-password",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
   assert.equal(save.status, 303);
-  assert.notEqual(settings.get("DASHBOARD_PASSWORD"), "new-dashboard-password");
+  assert.equal(save.headers.get("location"), "/quick-setup/complete");
 
+  const complete = await handleRequest(new Request("https://siadinz.example/quick-setup/complete", { headers: { cookie } }), env, upstream());
+  const completeHtml = await complete.text();
+  const completeCsrf = /name="csrf" value="([^"]+)"/.exec(completeHtml)?.[1];
+  assert.match(completeHtml, /Buat cronjob presensi/);
+  assert.match(completeHtml, /https:\/\/siadinz\.example\/api\/v1\/presensi/);
+  assert.match(completeHtml, /X-API-Secret: \*\*\*\*\*/);
+
+  const command = await handleRequest(formRequest("/copy-api-command", { csrf: completeCsrf, template: "course-hours" }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  assert.equal(command.status, 200);
+  assert.match(await command.text(), /https:\/\/siadinz\.example\/api\/v1\/presensi/);
+
+  const finish = await handleRequest(formRequest("/quick-setup/finish", { csrf: completeCsrf }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  assert.equal(finish.status, 303);
+  assert.equal(finish.headers.get("location"), "/dashboard");
   const oldPassword = await handleRequest(formRequest("/login", { password: "123456" }), env, upstream());
   const newPassword = await handleRequest(formRequest("/login", { password: "new-dashboard-password" }), env, upstream());
   assert.equal(oldPassword.status, 200);

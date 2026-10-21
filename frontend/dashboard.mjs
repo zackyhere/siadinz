@@ -2,6 +2,7 @@ import { renderLogin } from "./pages/auth.mjs";
 import { apiCommand, renderApi } from "./pages/api.mjs";
 import { renderDashboard } from "./pages/dashboard.mjs";
 import { renderNotifications } from "./pages/notifications.mjs";
+import { renderQuickSetup } from "./pages/quick-setup.mjs";
 import { renderSettings } from "./pages/settings.mjs";
 import { dashboardCss, redirect, renderPage } from "./partials/layout.mjs";
 
@@ -139,6 +140,26 @@ async function effectiveDashboardPassword(env) {
   return password || env.DASHBOARD_PASSWORD || DEFAULT_DASHBOARD_PASSWORD;
 }
 
+async function quickSetupState(env) {
+  const { encryptionKey } = configuration(env);
+  const [storedDashboardPassword, pending] = await Promise.all([
+    readSetting(env.DB, "DASHBOARD_PASSWORD", encryptionKey),
+    readSetting(env.DB, "QUICK_SETUP_PENDING", encryptionKey),
+  ]);
+  if (pending === "true") return { needsSetup: false, needsCompletion: true };
+  const dashboardPassword = storedDashboardPassword || env.DASHBOARD_PASSWORD || DEFAULT_DASHBOARD_PASSWORD;
+  if (dashboardPassword !== DEFAULT_DASHBOARD_PASSWORD) return { needsSetup: false, needsCompletion: false };
+  const [username, password] = await Promise.all([
+    readSetting(env.DB, "SIADIN_USERNAME", encryptionKey),
+    readSetting(env.DB, "SIADIN_PASSWORD", encryptionKey),
+  ]);
+  return { needsSetup: !username || !password, needsCompletion: false };
+}
+
+function generatedApiSecret() {
+  return base64Url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
 function forbidden() {
   return renderPage("Forbidden", "<h1>Forbidden</h1>", 403);
 }
@@ -179,6 +200,50 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
       : forbidden();
   }
 
+  let setup;
+  try {
+    setup = await quickSetupState(env);
+  } catch {
+    return renderPage("Configuration error", "<section class=card><h1>Konfigurasi tidak dapat dibaca</h1></section>", 500);
+  }
+  const origin = url.origin;
+  if (url.pathname === "/quick-setup" && request.method === "GET") {
+    if (setup.needsCompletion) return redirect("/quick-setup/complete");
+    return setup.needsSetup ? renderQuickSetup(session, origin) : redirect("/dashboard");
+  }
+  if (url.pathname === "/quick-setup/save" && request.method === "POST") {
+    const form = await request.formData();
+    if (!hasValidCsrf(request, form, session)) return forbidden();
+    if (!setup.needsSetup) return redirect(setup.needsCompletion ? "/quick-setup/complete" : "/dashboard");
+    const values = { dashboardPassword: String(form.get("dashboardPassword") ?? "").trim(), username: String(form.get("username") ?? "").trim(), password: String(form.get("password") ?? "").trim() };
+    if (!values.dashboardPassword || !values.username || !values.password) return renderQuickSetup(session, origin);
+    try {
+      await Promise.all([
+        writeSetting(env.DB, "DASHBOARD_PASSWORD", values.dashboardPassword, encryptionKey),
+        writeSetting(env.DB, "SIADIN_USERNAME", values.username, encryptionKey),
+        writeSetting(env.DB, "SIADIN_PASSWORD", values.password, encryptionKey),
+        writeSetting(env.DB, "PRESENSI_API_SECRET", generatedApiSecret(), encryptionKey),
+        writeSetting(env.DB, "QUICK_SETUP_PENDING", "true", encryptionKey),
+      ]);
+      return redirect("/quick-setup/complete");
+    } catch {
+      return renderQuickSetup(session, origin);
+    }
+  }
+  if (url.pathname === "/quick-setup/complete" && request.method === "GET") {
+    if (setup.needsSetup) return redirect("/quick-setup");
+    return setup.needsCompletion ? renderQuickSetup(session, origin, true) : redirect("/dashboard");
+  }
+  if (url.pathname === "/quick-setup/finish" && request.method === "POST") {
+    const form = await request.formData();
+    if (!hasValidCsrf(request, form, session)) return forbidden();
+    if (!setup.needsCompletion) return redirect(setup.needsSetup ? "/quick-setup" : "/dashboard");
+    await writeSetting(env.DB, "QUICK_SETUP_PENDING", "false", encryptionKey);
+    return redirect("/dashboard");
+  }
+  if (setup.needsSetup && url.pathname !== "/copy-api-command") return redirect("/quick-setup");
+  if (setup.needsCompletion && url.pathname !== "/copy-api-command") return redirect("/quick-setup/complete");
+
   if (url.pathname === "/api" && request.method === "GET") return renderApi(session);
 
   if (url.pathname === "/copy-api-command" && request.method === "POST") {
@@ -186,7 +251,7 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
     if (!hasValidCsrf(request, form, session)) return forbidden();
     try {
       const secret = (await effectiveCredentials(env)).apiSecret;
-      const command = secret ? apiCommand(String(form.get("template") ?? ""), secret) : null;
+      const command = secret ? apiCommand(String(form.get("template") ?? ""), secret, origin) : null;
       if (!command) return notFound();
       return new Response(command, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff" } });
     } catch {
