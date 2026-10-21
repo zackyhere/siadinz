@@ -1,5 +1,5 @@
 import { renderLogin } from "./pages/auth.mjs";
-import { renderApi } from "./pages/api.mjs";
+import { apiCommand, renderApi } from "./pages/api.mjs";
 import { renderDashboard } from "./pages/dashboard.mjs";
 import { renderNotifications } from "./pages/notifications.mjs";
 import { renderSettings } from "./pages/settings.mjs";
@@ -159,6 +159,19 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
   }
 
   if (url.pathname === "/api" && request.method === "GET") return renderApi(session);
+
+  if (url.pathname === "/copy-api-command" && request.method === "POST") {
+    const form = await request.formData();
+    if (!hasValidCsrf(request, form, session)) return forbidden();
+    try {
+      const secret = (await effectiveCredentials(env)).apiSecret;
+      const command = secret ? apiCommand(String(form.get("template") ?? ""), secret) : null;
+      if (!command) return notFound();
+      return new Response(command, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff" } });
+    } catch {
+      return renderApi(session);
+    }
+  }
 
   if (url.pathname === "/settings" && request.method === "GET") {
     try {

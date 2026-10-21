@@ -26,23 +26,32 @@ export const dashboardClientScript = `(() => {
   const closeSkipMenus = (except) => {
     for (const menu of document.querySelectorAll(".skip-menu[open]")) if (menu !== except) menu.open = false;
   };
-  document.addEventListener("click", (event) => {
-    const menu = event.target.closest(".skip-menu");
-    closeSkipMenus(menu);
-  });
+  document.addEventListener("click", (event) => closeSkipMenus(event.target.closest(".skip-menu")));
   document.addEventListener("toggle", (event) => {
     if (event.target.matches(".skip-menu[open]")) closeSkipMenus(event.target);
   }, true);
 
+  for (const detail of document.querySelectorAll(".day-schedule")) {
+    detail.addEventListener("toggle", () => {
+      if (detail.open) for (const sibling of document.querySelectorAll(".day-schedule[open]")) if (sibling !== detail) sibling.open = false;
+    });
+  }
+
+  const csrf = document.querySelector("[data-api-copy-csrf]")?.dataset.apiCopyCsrf;
   for (const button of document.querySelectorAll("[data-copy-code]")) {
     button.addEventListener("click", async () => {
-      const source = button.previousElementSibling?.textContent?.trim();
-      if (!source || !navigator.clipboard) return;
+      if (!csrf || !navigator.clipboard) return;
+      button.disabled = true;
       try {
-        await navigator.clipboard.writeText(source);
+        const response = await fetch("/copy-api-command", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" }, body: new URLSearchParams({ csrf, template: button.dataset.apiTemplate }) });
+        if (!response.ok) throw new Error("Copy failed.");
+        await navigator.clipboard.writeText(await response.text());
         button.textContent = "Tersalin";
-        setTimeout(() => { button.textContent = "Salin"; }, 1200);
-      } catch {}
+      } catch {
+        button.textContent = "Gagal menyalin";
+      } finally {
+        setTimeout(() => { button.textContent = "Salin"; button.disabled = false; }, 1200);
+      }
     });
   }
 })();`;

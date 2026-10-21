@@ -1,22 +1,32 @@
-import { renderPage } from "../partials/layout.mjs";
+import { escapeHtml, renderPage } from "../partials/layout.mjs";
 import { renderNavigation } from "../partials/navigation.mjs";
 
-const apiSecret = "*****";
+const origin = "https://siadinz.zackyhere.workers.dev";
+const maskedSecret = "*****";
 
-function code(value) {
-  return `<pre class="api-code"><code>${value}</code></pre>`;
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\"'\"'")}'`;
+}
+
+export function apiCommand(template, secret) {
+  const header = `-H ${shellQuote(`X-API-Secret: ${secret}`)}`;
+  if (template === "schedule") return `curl ${header} \\
+  ${origin}/api/v1/jadwal`;
+  if (template === "attendance") return `curl -X POST \\
+  ${header} \\
+  ${origin}/api/v1/presensi`;
+  if (template === "course-hours") return `curl -X POST \\
+  ${header} \\
+  -H "Jam-Matkul: true" \\
+  -H "Time-Zone: WIB" \\
+  ${origin}/api/v1/presensi`;
+  return null;
+}
+
+function template(id, title, method, preview) {
+  return `<div class="api-template"><div><h2>${title}</h2><p>${method}</p></div><pre class="api-code"><code>${escapeHtml(preview)}</code></pre><button class="button-secondary" type="button" data-copy-code data-api-template="${id}">Salin</button></div>`;
 }
 
 export function renderApi(session) {
-  const scheduleCurl = `curl -H "X-API-Secret: ${apiSecret}" \\
-  https://siadinz.zackyhere.workers.dev/api/v1/jadwal`;
-  const attendanceCurl = `curl -X POST \\
-  -H "X-API-Secret: ${apiSecret}" \\
-  https://siadinz.zackyhere.workers.dev/api/v1/presensi`;
-  const gatedAttendanceCurl = `curl -X POST \\
-  -H "X-API-Secret: ${apiSecret}" \\
-  -H "Jam-Matkul: true" \\
-  -H "Time-Zone: WIB" \\
-  https://siadinz.zackyhere.workers.dev/api/v1/presensi`;
-  return renderPage("API", `${renderNavigation(session.csrf, "api")}<section class="api-page"><h1 class="page-title">API</h1><div class="api-template"><div><h2>Ambil jadwal</h2><p>GET <code>/api/v1/jadwal</code></p></div>${code(scheduleCurl)}<button class="button-secondary" type="button" data-copy-code>Salin</button></div><div class="api-template"><div><h2>Presensi sekarang</h2><p>POST <code>/api/v1/presensi</code></p></div>${code(attendanceCurl)}<button class="button-secondary" type="button" data-copy-code>Salin</button></div><div class="api-template"><div><h2>Presensi sesuai jam kuliah</h2><p>POST <code>/api/v1/presensi</code></p></div>${code(gatedAttendanceCurl)}<button class="button-secondary" type="button" data-copy-code>Salin</button></div></section>`);
+  return renderPage("API", `${renderNavigation(session.csrf, "api")}<section class="api-page" data-api-copy-csrf="${escapeHtml(session.csrf)}"><h1 class="page-title">API</h1>${template("schedule", "Ambil jadwal", "GET /api/v1/jadwal", apiCommand("schedule", maskedSecret))}${template("attendance", "Presensi sekarang", "POST /api/v1/presensi", apiCommand("attendance", maskedSecret))}${template("course-hours", "Presensi sesuai jam kuliah", "POST /api/v1/presensi", apiCommand("course-hours", maskedSecret))}</section>`);
 }

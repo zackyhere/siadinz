@@ -153,6 +153,21 @@ test("notifications shows only Discord webhook and API page masks secrets", asyn
   assert.equal(webhook.status, 404);
 });
 
+test("API copy endpoint returns a runnable command without exposing secrets in the page", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/api", { headers: { cookie } }), env, upstream());
+  const html = await page.text();
+  const csrf = /data-api-copy-csrf="([^"]+)"/.exec(html)?.[1];
+  const response = await handleRequest(formRequest("/copy-api-command", { csrf, template: "schedule" }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  const command = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(command, /X-API-Secret: initial-api-secret/);
+  assert.doesNotMatch(html, /initial-api-secret/);
+});
+
 test("dashboard attendance route submits only the CSRF-authorized selected course", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
