@@ -1,5 +1,5 @@
-import { readSetting, writeSetting } from "./dashboard.mjs";
-import { dailySkipKeyVariants } from "./skip-keys.mjs";
+import { readSetting, writeSetting } from "../../frontend/dashboard.mjs";
+import { dailySkipKeyVariants } from "../lib/skip-keys.mjs";
 
 
 const API_ORIGIN = "https://api.dinus.ac.id";

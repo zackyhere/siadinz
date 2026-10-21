@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { cacheCourseSchedule, isWithinCourseHours, requestedCourseHours } from "./course-hours.mjs";
+import { cacheCourseSchedule, isWithinCourseHours, requestedCourseHours } from "../backend/services/course-hours.mjs";
 
 function database() {
   const slots = [];

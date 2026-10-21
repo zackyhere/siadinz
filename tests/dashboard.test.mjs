@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { handleRequest } from "./worker.mjs";
+import { handleRequest } from "../backend/worker.mjs";
 
 const encryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
@@ -190,7 +190,7 @@ test("skip controls render only for the current WIB schedule slot", async () => 
     { day: "SELASA", session: "08.40-10.20", room: "A2.3", weekdayOrder: 2, startTimeOrder: 520 },
     { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
   ] }] };
-  const { handleDashboardRequest } = await import("./dashboard.mjs");
+  const { handleDashboardRequest } = await import("../frontend/dashboard.mjs");
   const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
   const html = await response.text();
 
@@ -208,7 +208,7 @@ test("dashboard preserves a malformed legacy daily course skip after refresh", a
   const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
     { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
   ] }] };
-  const { handleDashboardRequest } = await import("./dashboard.mjs");
+  const { handleDashboardRequest } = await import("../frontend/dashboard.mjs");
   const response = await handleDashboardRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, async () => ({ attendance, courseSchedule }), async () => "", {});
   const html = await response.text();
 

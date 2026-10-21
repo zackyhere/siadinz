@@ -4,7 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   attendAvailableSchedules,
   fetchAttendanceStatus,
-} from "./attendance-status.mjs";
+} from "../services/attendance-status.mjs";
 
 function json(response, statusCode, body) {
   response.writeHead(statusCode, {

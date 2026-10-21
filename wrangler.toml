@@ -1,9 +1,9 @@
 name = "siadinz"
-main = "worker.mjs"
+main = "backend/worker.mjs"
 compatibility_date = "2026-10-19"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "siadin"
 database_id = "de360e00-75e0-41f6-a88a-c925e26aa2db"
-migrations_dir = "migrations"
+migrations_dir = "backend/migrations"

@@ -1,4 +1,4 @@
-import { isSkippedCourse } from "./skip-keys.mjs";
+import { isSkippedCourse } from "../lib/skip-keys.mjs";
 
 const API_ORIGIN = "https://api.dinus.ac.id";
 const USER_AGENT = "presensi-status-check/2.0";

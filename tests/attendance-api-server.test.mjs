@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAttendanceApiServer } from "./attendance-api-server.mjs";
+import { createAttendanceApiServer } from "../backend/local/attendance-api-server.mjs";
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {

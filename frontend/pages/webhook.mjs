@@ -1,0 +1,6 @@
+import { escapeHtml, renderPage } from "../partials/layout.mjs";
+import { renderNavigation } from "../partials/navigation.mjs";
+
+export function renderWebhook(session, configuration, message = "") {
+  return renderPage("Webhook", `${renderNavigation(session.csrf)}<section class="card"><h1>Discord webhook</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>URL terenkripsi dan tidak pernah ditampilkan kembali.</p><p>Webhook: <strong>${configuration.url ? "configured" : "missing"}</strong>.</p><form method="post" action="/webhook"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label>Discord webhook URL<input type="url" name="url"></label><label><input type="checkbox" name="presensi" ${configuration.presensiEnabled ? "checked" : ""}> Presensi berhasil</label><label><input type="checkbox" name="apiPresensi" ${configuration.apiPresensiEnabled ? "checked" : ""}> API presensi di-hit</label><label><input type="checkbox" name="settings" ${configuration.settingsEnabled ? "checked" : ""}> Settings diperbarui</label><label><input type="checkbox" name="tokenRefresh" ${configuration.tokenRefreshEnabled ? "checked" : ""}> Token diperbarui</label><button>Simpan webhook</button></form></section>`);
+}

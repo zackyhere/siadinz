@@ -1,12 +1,13 @@
-import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./attendance-status.mjs";
-import { effectiveCredentials, handleDashboardRequest, writeSetting, dashboardClientScript } from "./dashboard.mjs";
-import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./course-hours.mjs";
+import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./services/attendance-status.mjs";
+import { effectiveCredentials, handleDashboardRequest, writeSetting } from "../frontend/dashboard.mjs";
+import { dashboardClientScript } from "../frontend/public/dashboard-client.mjs";
+import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./services/course-hours.mjs";
 
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
   notifyDiscord, notifyDiscordPresensi, scheduleSlotKey, setDailySkip,
   skippedScheduleKeys, webhookConfiguration,
-} from "./automation.mjs";
+} from "./services/automation.mjs";
 
 const RC = { SUCCESS: 0, NOT_AVAILABLE: 1, INVALID_REQUEST: 2, UPSTREAM_FAILED: 3, UPSTREAM_AUTHENTICATION_FAILED: 4, SERVER_MISCONFIGURED: 5, UNAUTHORIZED: 6 };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });

@@ -7,8 +7,8 @@ import {
   notifyDiscordPresensi,
   setDailySkip,
   skippedMasterIds,
-} from "./automation.mjs";
-import { writeSetting } from "./dashboard.mjs";
+} from "../backend/services/automation.mjs";
+import { writeSetting } from "../frontend/dashboard.mjs";
 
 const key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
@@ -103,7 +103,7 @@ test("Discord API-hit event respects its own toggle", async () => {
   await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/123/token", key);
   await writeSetting(env.DB, "DISCORD_WEBHOOK_API_PRESENSI_ENABLED", "true", key);
   let posted = false;
-  const { notifyDiscord } = await import("./automation.mjs");
+  const { notifyDiscord } = await import("../backend/services/automation.mjs");
 
   await notifyDiscord(env, "api_presensi", "API hit", async () => {
     posted = true;

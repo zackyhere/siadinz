@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { attendAvailableSchedules, fetchAttendanceStatus } from "./attendance-status.mjs";
+import { attendAvailableSchedules, fetchAttendanceStatus } from "../services/attendance-status.mjs";
 
 function fail(message, code = 1) {
   process.stdout.write(`${JSON.stringify({ error: message })}\n`);

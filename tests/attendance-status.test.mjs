@@ -5,7 +5,7 @@ import {
   attendAvailableSchedules,
   classifySchedule,
   summarizeAttendance,
-} from "./attendance-status.mjs";
+} from "../backend/services/attendance-status.mjs";
 
 const source = { kind: "online" };
 const payloadFor = (jadwal) => ({ data: { jadwal } });
