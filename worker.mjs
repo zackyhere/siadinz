@@ -1,6 +1,6 @@
 import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./attendance-status.mjs";
 import { effectiveCredentials, handleDashboardRequest, writeSetting, dashboardClientScript } from "./dashboard.mjs";
-import { cacheCourseSchedule, isWithinCourseHours, requestedCourseHours } from "./course-hours.mjs";
+import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./course-hours.mjs";
 
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
@@ -84,8 +84,9 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
     let courseHoursZone;
     try { courseHoursZone = requestedCourseHours(request.headers); }
     catch (error) { return json(400, failureBody(RC.INVALID_REQUEST, "invalid_time_zone", error.message)); }
+    const courseHoursTime = courseHoursZone ? courseHoursTimeContext(courseHoursZone, now) : null;
     if (courseHoursZone && !await isWithinCourseHours(env.DB, courseHoursZone, now)) {
-      return json(409, failureBody(RC.NOT_AVAILABLE, "outside_course_hours", "Current request time is outside the cached course schedule."));
+      return json(409, { ...failureBody(RC.NOT_AVAILABLE, "outside_course_hours", "Current request time is outside the cached course schedule."), data: courseHoursTime });
     }
 
     let outcome;

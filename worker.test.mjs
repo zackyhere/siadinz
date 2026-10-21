@@ -127,7 +127,9 @@ test("Worker rejects Jam-Matkul requests outside cached course hours before SiAd
   const body = await response.json();
 
   assert.equal(response.status, 409);
-  assert.equal(body.status, "failed");
+  assert.equal(body.data.serverTimeUtc, "2026-10-21T01:00:00.000Z");
+  assert.equal(body.data.evaluatedTime, "2026-10-21T01:00:00");
+  assert.equal(body.data.timeZone, "UTC");
   assert.equal(body.error.code, "outside_course_hours");
   assert.equal(upstreamCalls, 0);
 });

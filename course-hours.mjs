@@ -47,6 +47,14 @@ export function requestedCourseHours(headers) {
   if (zone !== "WIB" && zone !== "UTC") throw new Error("Time-Zone must be WIB or UTC when Jam-Matkul is true.");
   return zone;
 }
+export function courseHoursTimeContext(zone, now = new Date()) {
+  const timeZone = zone === "WIB" ? "Asia/Jakarta" : "UTC";
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  });
+  return { serverTimeUtc: now.toISOString(), evaluatedTime: formatter.format(now).replace(" ", "T"), timeZone: zone };
+}
+
 
 export async function cacheCourseSchedule(database, schedule, now = new Date()) {
   const slots = (schedule.schedules ?? []).flatMap((course) => (course.slots ?? []).flatMap((slot) => {
