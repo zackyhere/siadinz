@@ -28,5 +28,5 @@ function template(id, title, method, preview) {
 }
 
 export function renderApi(session) {
-  return renderPage("API", `${renderNavigation(session.csrf, "api")}<section class="api-page" data-api-copy-csrf="${escapeHtml(session.csrf)}"><h1 class="page-title">API</h1>${template("schedule", "Ambil jadwal", "GET /api/v1/jadwal", apiCommand("schedule", maskedSecret))}${template("attendance", "Presensi sekarang", "POST /api/v1/presensi", apiCommand("attendance", maskedSecret))}${template("course-hours", "Presensi sesuai jam kuliah", "POST /api/v1/presensi", apiCommand("course-hours", maskedSecret))}</section>`);
+  return renderPage("API", `${renderNavigation(session.csrf, "api")}<section class="api-page" data-api-copy-csrf="${escapeHtml(session.csrf)}"><h1 class="page-title">API</h1>${template("schedule", "Ambil jadwal", "GET /api/v1/jadwal", apiCommand("schedule", maskedSecret))}${template("course-hours", "Presensi sesuai jam kuliah", "POST /api/v1/presensi", apiCommand("course-hours", maskedSecret))}</section>`);
 }

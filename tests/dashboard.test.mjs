@@ -131,8 +131,7 @@ test("settings accepts an account modal save with same-origin Sec-Fetch-Site", a
   assert.equal(save.status, 303);
   assert.equal(save.headers.get("location"), "/settings?notice=settings");
 });
-
-test("notifications shows only Discord webhook and API page masks secrets", async () => {
+test("notifications shows only Discord webhook and API page hides the direct attendance example", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
@@ -148,11 +147,12 @@ test("notifications shows only Discord webhook and API page masks secrets", asyn
   assert.doesNotMatch(notificationHtml, /Notifikasi perangkat/);
   assert.equal(api.status, 200);
   assert.match(apiHtml, /X-API-Secret: \*\*\*\*\*/);
+  assert.match(apiHtml, /Presensi sesuai jam kuliah/);
+  assert.doesNotMatch(apiHtml, /Presensi sekarang/);
   assert.match(apiHtml, /data-copy-code/);
   assert.equal(token.status, 404);
   assert.equal(webhook.status, 404);
 });
-
 test("API copy endpoint returns a runnable command without exposing secrets in the page", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());

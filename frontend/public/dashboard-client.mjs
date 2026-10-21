@@ -1,4 +1,10 @@
 export const dashboardClientScript = `(() => {
+  const replayAnimation = (element) => {
+    if (!element) return;
+    element.style.animation = "none";
+    void element.offsetWidth;
+    element.style.animation = "";
+  };
   const closeDialogOnBackdrop = (dialog) => dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
   });
@@ -9,15 +15,19 @@ export const dashboardClientScript = `(() => {
     }
   }, true);
 
+  const openDialog = (dialog) => {
+    dialog?.showModal();
+    replayAnimation(dialog);
+  };
   const logoutDialog = document.querySelector("[data-logout-dialog]");
   if (logoutDialog) {
     closeDialogOnBackdrop(logoutDialog);
-    document.querySelector("[data-open-logout]")?.addEventListener("click", () => logoutDialog.showModal());
+    document.querySelector("[data-open-logout]")?.addEventListener("click", () => openDialog(logoutDialog));
     document.querySelector("[data-close-logout]")?.addEventListener("click", () => logoutDialog.close());
   }
 
   for (const button of document.querySelectorAll("[data-open-settings]")) {
-    button.addEventListener("click", () => document.querySelector('[data-settings-dialog="' + button.dataset.openSettings + '"]')?.showModal());
+    button.addEventListener("click", () => openDialog(document.querySelector('[data-settings-dialog="' + button.dataset.openSettings + '"]')));
   }
   for (const button of document.querySelectorAll("[data-close-settings]")) {
     button.addEventListener("click", () => button.closest("dialog")?.close());
@@ -28,12 +38,17 @@ export const dashboardClientScript = `(() => {
   };
   document.addEventListener("click", (event) => closeSkipMenus(event.target.closest(".skip-menu")));
   document.addEventListener("toggle", (event) => {
-    if (event.target.matches(".skip-menu[open]")) closeSkipMenus(event.target);
+    if (event.target.matches(".skip-menu[open]")) {
+      closeSkipMenus(event.target);
+      replayAnimation(event.target.querySelector("form"));
+    }
   }, true);
 
   for (const detail of document.querySelectorAll(".day-schedule")) {
     detail.addEventListener("toggle", () => {
-      if (detail.open) for (const sibling of document.querySelectorAll(".day-schedule[open]")) if (sibling !== detail) sibling.open = false;
+      if (!detail.open) return;
+      for (const sibling of document.querySelectorAll(".day-schedule[open]")) if (sibling !== detail) sibling.open = false;
+      replayAnimation(detail.querySelector(".day-schedule__content"));
     });
   }
 
