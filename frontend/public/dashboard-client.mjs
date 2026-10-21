@@ -18,6 +18,12 @@ export const dashboardClientScript = `(() => {
     return true;
   };
 
+  const sendTestNotification = () => {
+    if (!("Notification" in window) || Notification.permission !== "granted") return false;
+    new Notification("Notifikasi perangkat aktif", { body: "Notifikasi percobaan berhasil dikirim." });
+    return true;
+  };
+
   const dialog = document.querySelector("[data-logout-dialog]");
   document.querySelector("[data-open-logout]")?.addEventListener("click", () => dialog?.showModal());
   document.querySelector("[data-close-logout]")?.addEventListener("click", () => dialog?.close());
@@ -35,13 +41,13 @@ export const dashboardClientScript = `(() => {
     if (!("Notification" in window)) {
       permission.textContent = "Notifikasi perangkat tidak didukung browser ini.";
       requestButton.disabled = true;
-      testButton.disabled = true;
+      if (testButton) testButton.disabled = true;
       return;
     }
     const state = Notification.permission;
     permission.textContent = state === "granted" ? "Notifikasi perangkat diizinkan." : state === "denied" ? "Izin notifikasi ditolak di browser." : "Notifikasi perangkat belum diizinkan.";
     requestButton.disabled = state !== "default";
-    testButton.disabled = state !== "granted";
+    if (testButton) testButton.disabled = state !== "granted";
     requestButton.textContent = state === "granted" ? "Notifikasi perangkat diizinkan" : state === "denied" ? "Izin notifikasi ditolak" : "Izinkan notifikasi perangkat";
   };
   for (const input of options.querySelectorAll("input[type=checkbox]")) input.checked = Boolean(deviceOptions()[input.name]);
@@ -54,10 +60,13 @@ export const dashboardClientScript = `(() => {
     await Notification.requestPermission();
     refreshPermission();
   });
-  testButton.addEventListener("click", () => {
-    const selected = Object.entries(deviceOptions()).filter(([, enabled]) => enabled).map(([event]) => event);
-    if (!selected.length) return;
-    selected.forEach((event, index) => setTimeout(() => notify(event), index * 250));
+  testButton?.addEventListener("click", () => {
+    try {
+      if (sendTestNotification()) permission.textContent = "Notifikasi percobaan telah dikirim.";
+      else permission.textContent = "Notifikasi belum diizinkan oleh browser.";
+    } catch {
+      permission.textContent = "Browser tidak dapat membuat notifikasi percobaan.";
+    }
   });
   refreshPermission();
 })();`;

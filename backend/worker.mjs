@@ -50,7 +50,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
   if (!url.pathname.startsWith("/api/")) {
     if (url.pathname === "/dashboard.js") {
       return new Response(dashboardClientScript, {
-        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" },
+        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
       });
     }
     const loadDashboard = async () => withSiadinToken(env, fetchImpl, async (token) => {
