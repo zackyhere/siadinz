@@ -1,226 +1,94 @@
+import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./attendance-status.mjs";
+import { effectiveCredentials, handleDashboardRequest, writeSetting } from "./dashboard.mjs";
 import {
-  attendAvailableSchedules,
-  fetchAttendanceStatus,
-  fetchFullCourseSchedule,
-} from "./attendance-status.mjs";
-import { effectiveCredentials, handleDashboardRequest } from "./dashboard.mjs";
+  accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
+  notifyDiscord, notifyDiscordPresensi, scheduleKey, setDailySkip,
+  skippedScheduleKeys, webhookConfiguration,
+} from "./automation.mjs";
 
-const RC = {
-  SUCCESS: 0,
-  NOT_AVAILABLE: 1,
-  INVALID_REQUEST: 2,
-  UPSTREAM_FAILED: 3,
-  UPSTREAM_AUTHENTICATION_FAILED: 4,
-  SERVER_MISCONFIGURED: 5,
-  UNAUTHORIZED: 6,
-};
+const RC = { SUCCESS: 0, NOT_AVAILABLE: 1, INVALID_REQUEST: 2, UPSTREAM_FAILED: 3, UPSTREAM_AUTHENTICATION_FAILED: 4, SERVER_MISCONFIGURED: 5, UNAUTHORIZED: 6 };
+const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+const failureBody = (rc, code, message) => ({ status: "failed", rc, error: { code, message } });
+const upstreamStatus = (error) => Number(/HTTP (\d{3})\./.exec(error.message)?.[1] ?? 502);
+const isTokenRejection = (error) => /HTTP (401|403)\./.test(error instanceof Error ? error.message : String(error));
 
-function json(status, body) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
-  });
-}
+async function sameSecret(left, right) { if (!left || !right) return false; const [x, y] = await Promise.all([crypto.subtle.digest("SHA-256", new TextEncoder().encode(left)), crypto.subtle.digest("SHA-256", new TextEncoder().encode(right))]); const a = new Uint8Array(x), b = new Uint8Array(y); let difference = 0; for (let i = 0; i < a.length; i += 1) difference |= a[i] ^ b[i]; return difference === 0; }
+async function recordEvent(database, outcome) { try { await database.prepare("INSERT INTO presensi_events (created_at, outcome_status, rc, http_status, attempted_count, attempted_courses_json, state, error_code, error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(new Date().toISOString(), outcome.status, outcome.rc, outcome.httpStatus, outcome.attempted.length, JSON.stringify(outcome.attempted), outcome.state ?? null, outcome.errorCode ?? null, outcome.errorMessage ?? null).run(); } catch (error) { console.error("Failed to persist presensi audit event:", error); } }
+function upstreamFailure(error) { const status = upstreamStatus(error); return { status, body: failureBody(status === 401 || status === 403 ? RC.UPSTREAM_AUTHENTICATION_FAILED : RC.UPSTREAM_FAILED, status === 401 || status === 403 ? "authentication_failed" : "upstream_failed", error.message) }; }
+function background(ctx, promise) { if (ctx?.waitUntil) ctx.waitUntil(promise.catch((error) => console.error("Background notification failed:", error))); else return promise; }
 
-function upstreamStatus(error) {
-  const match = /HTTP (\d{3})\./.exec(error.message);
-  return match ? Number(match[1]) : 502;
-}
-
-function failureBody(rc, code, message) {
-  return { status: "failed", rc, error: { code, message } };
-}
-
-function attemptedCourses(attempted) {
-  return attempted.map(({ source, courseName, courseCode, classGroup, date, idMaster }) => ({
-    source, courseName, courseCode, classGroup, date, idMaster,
-  }));
-}
-
-async function recordPresensiEvent(database, outcome) {
-  try {
-    await database.prepare(`
-      INSERT INTO presensi_events (
-        created_at, outcome_status, rc, http_status, attempted_count,
-        attempted_courses_json, state, error_code, error_message
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      new Date().toISOString(),
-      outcome.status,
-      outcome.rc,
-      outcome.httpStatus,
-      outcome.attempted.length,
-      JSON.stringify(attemptedCourses(outcome.attempted)),
-      outcome.state ?? null,
-      outcome.errorCode ?? null,
-      outcome.errorMessage ?? null,
-    ).run();
-  } catch (error) {
-    console.error("Failed to persist presensi audit event:", error);
+async function withSiadinToken(env, fetchImpl, operation, ctx) {
+  const tokenRefresh = () => background(ctx, notifyDiscord(env, "token_refresh", "🔄 Access token SiAdin diperbarui.", fetchImpl));
+  let token = await accessTokenForRequest(env, fetchImpl, false, tokenRefresh);
+  try { return await operation(token); } catch (error) {
+    if (!isTokenRejection(error)) throw error;
+    token = await accessTokenForRequest(env, fetchImpl, true, tokenRefresh);
+    return operation(token);
   }
 }
 
-async function hasValidApiSecret(request, apiSecret) {
-  const received = request.headers.get("x-api-secret");
-  return sameSecret(received, apiSecret);
-}
-
-async function sameSecret(left, right) {
-  if (!left || !right) return false;
-  const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", new TextEncoder().encode(left)),
-    crypto.subtle.digest("SHA-256", new TextEncoder().encode(right)),
-  ]);
-  const a = new Uint8Array(leftHash);
-  const b = new Uint8Array(rightHash);
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1) difference |= a[index] ^ b[index];
-  return difference === 0;
-}
-
-function upstreamFailure(error) {
-  const httpStatus = upstreamStatus(error);
-  const isAuthenticationFailure = httpStatus === 401 || httpStatus === 403;
+function dashboardAutomation(env, fetchImpl, ctx) {
+  const notify = (event, content) => background(ctx, notifyDiscord(env, event, content, fetchImpl));
   return {
-    httpStatus,
-    body: failureBody(
-      isAuthenticationFailure ? RC.UPSTREAM_AUTHENTICATION_FAILED : RC.UPSTREAM_FAILED,
-      isAuthenticationFailure ? "authentication_failed" : "upstream_failed",
-      error.message,
-    ),
+    webhookConfig: () => webhookConfiguration(env),
+    saveWebhook: async (url, toggles) => {
+      if (url && !/^https:\/\/discord(?:app)?\.com\/api\/webhooks\//.test(url)) throw new Error("Invalid Discord webhook URL.");
+      if (url) await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", url, env.CONFIG_ENCRYPTION_KEY);
+      for (const [key, value] of Object.entries(toggles)) await writeSetting(env.DB, key, String(value), env.CONFIG_ENCRYPTION_KEY);
+    },
+    skip: (key) => setDailySkip(env.DB, key, jakartaDate()),
+    unskip: (key) => clearDailySkip(env.DB, key, jakartaDate()),
+    notify,
   };
 }
 
 export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
-    return handleDashboardRequest(request, env, async () => {
-      const { accessToken } = await effectiveCredentials(env);
-      if (!accessToken) throw new Error("Missing access token.");
-      const [attendance, courseSchedule] = await Promise.all([
-        fetchAttendanceStatus(accessToken, fetchImpl),
-        fetchFullCourseSchedule(accessToken, fetchImpl).catch(() => ({ schedules: [] })),
+    return handleDashboardRequest(request, env, async () => withSiadinToken(env, fetchImpl, async (token) => {
+      const [attendance, courseSchedule, skippedKeys] = await Promise.all([
+        fetchAttendanceStatus(token, fetchImpl),
+        fetchFullCourseSchedule(token, fetchImpl).catch(() => ({ schedules: [] })),
+        skippedScheduleKeys(env.DB, jakartaDate()),
       ]);
-      return { attendance, courseSchedule };
-    });
+      const weekday = jakartaWeekday();
+      const todayCourseKeys = new Set((courseSchedule.schedules ?? [])
+        .filter((course) => course.slots.some((slot) => slot.day.toLocaleUpperCase("id-ID") === weekday))
+        .map((course) => scheduleKey(course.courseCode, course.classGroup)));
+      return { attendance: { ...attendance, skippedKeys: [...skippedKeys], todayCourseKeys: [...todayCourseKeys] }, courseSchedule };
+    }, ctx), (username, password) => loginSiadin(username, password, fetchImpl), dashboardAutomation(env, fetchImpl, ctx));
   }
 
-  if (!env.CONFIG_ENCRYPTION_KEY || !env.DB) {
-    return json(500, failureBody(
-      RC.SERVER_MISCONFIGURED,
-      "server_misconfigured",
-      "Worker encryption secret or D1 binding is not configured.",
-    ));
-  }
+  if (!env.CONFIG_ENCRYPTION_KEY || !env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Worker encryption secret or D1 binding is not configured."));
+  let apiSecret;
+  try { apiSecret = (await effectiveCredentials(env)).apiSecret; } catch { return json(500, failureBody(RC.SERVER_MISCONFIGURED, "credential_configuration_invalid", "Stored attendance credentials cannot be decrypted with the current encryption key.")); }
+  if (!apiSecret) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Attendance API secret is not configured."));
+  if (!await sameSecret(request.headers.get("x-api-secret"), apiSecret)) return json(401, failureBody(RC.UNAUTHORIZED, "unauthorized", "A valid X-API-Secret header is required."));
 
-  let credentials;
-  try {
-    credentials = await effectiveCredentials(env);
-  } catch {
-    return json(500, failureBody(
-      RC.SERVER_MISCONFIGURED,
-      "credential_configuration_invalid",
-      "Stored attendance credentials cannot be decrypted with the current encryption key.",
-    ));
-  }
-  if (!credentials.accessToken || !credentials.apiSecret) {
-    return json(500, failureBody(
-      RC.SERVER_MISCONFIGURED,
-      "server_misconfigured",
-      "Attendance credentials are not configured.",
-    ));
-  }
-
-  if (!await hasValidApiSecret(request, credentials.apiSecret)) {
-    return json(401, failureBody(
-      RC.UNAUTHORIZED,
-      "unauthorized",
-      "A valid X-API-Secret header is required.",
-    ));
-  }
   if (request.method === "GET" && url.pathname === "/api/v1/jadwal") {
-    try {
-      const attendance = await fetchAttendanceStatus(credentials.accessToken, fetchImpl);
-      return json(200, {
-        status: "success",
-        rc: RC.SUCCESS,
-        checkedAt: new Date().toISOString(),
-        data: attendance,
-      });
-    } catch (error) {
-      const failure = upstreamFailure(error instanceof Error ? error : new Error(String(error)));
-      return json(failure.httpStatus, failure.body);
-    }
+    try { const attendance = await withSiadinToken(env, fetchImpl, (token) => fetchAttendanceStatus(token, fetchImpl), ctx); return json(200, { status: "success", rc: RC.SUCCESS, checkedAt: new Date().toISOString(), data: attendance }); }
+    catch (error) { const failure = upstreamFailure(error instanceof Error ? error : new Error(String(error))); return json(failure.status, failure.body); }
   }
 
   if (request.method === "POST" && url.pathname === "/api/v1/presensi") {
     let outcome;
     try {
-      const attendance = await attendAvailableSchedules(credentials.accessToken, fetchImpl);
-      outcome = attendance.attempted.length === 0
-        ? {
-          httpStatus: 200,
-          status: "failed",
-          rc: RC.NOT_AVAILABLE,
-          message: "No schedule is currently available for attendance.",
-          state: attendance.state,
-          attempted: [],
-          data: attendance,
-        }
-        : {
-          httpStatus: 200,
-          status: "success",
-          rc: RC.SUCCESS,
-          message: "Attendance was submitted and verified.",
-          state: attendance.state,
-          attempted: attendance.attempted,
-          data: attendance,
-        };
+      const skipped = await skippedScheduleKeys(env.DB, jakartaDate());
+      const attendance = await withSiadinToken(env, fetchImpl, (token) => attendAvailableSchedules(token, fetchImpl, skipped), ctx);
+      outcome = attendance.attempted.length ? { httpStatus: 200, status: "success", rc: RC.SUCCESS, message: "Attendance was submitted and verified.", state: attendance.state, attempted: attendance.attempted, data: attendance } : { httpStatus: 200, status: "failed", rc: RC.NOT_AVAILABLE, message: "No non-skipped schedule is currently available for attendance.", state: attendance.state, attempted: [], data: attendance };
+      background(ctx, notifyDiscord(env, "api_presensi", `📡 API presensi dipanggil: ${outcome.status} (rc ${outcome.rc}).`, fetchImpl));
+      if (outcome.status === "success") background(ctx, notifyDiscordPresensi(env, outcome, fetchImpl));
     } catch (error) {
       const failure = upstreamFailure(error instanceof Error ? error : new Error(String(error)));
-      outcome = {
-        httpStatus: failure.httpStatus,
-        status: "failed",
-        rc: failure.body.rc,
-        errorCode: failure.body.error.code,
-        errorMessage: failure.body.error.message,
-        attempted: [],
-      };
+      outcome = { httpStatus: failure.status, status: "failed", rc: failure.body.rc, errorCode: failure.body.error.code, errorMessage: failure.body.error.message, attempted: [] };
+      background(ctx, notifyDiscord(env, "api_presensi", `⚠️ API presensi gagal: ${outcome.errorCode} (rc ${outcome.rc}).`, fetchImpl));
     }
-
-    const audit = recordPresensiEvent(env.DB, outcome);
-    if (ctx?.waitUntil) ctx.waitUntil(audit);
-    else await audit;
-
-    if (outcome.status === "success" || outcome.rc === RC.NOT_AVAILABLE) {
-      return json(outcome.httpStatus, {
-        status: outcome.status,
-        rc: outcome.rc,
-        message: outcome.message,
-        checkedAt: new Date().toISOString(),
-        data: outcome.data,
-      });
-    }
-
+    background(ctx, recordEvent(env.DB, outcome));
+    if (outcome.status === "success" || outcome.rc === RC.NOT_AVAILABLE) return json(outcome.httpStatus, { status: outcome.status, rc: outcome.rc, message: outcome.message, checkedAt: new Date().toISOString(), data: outcome.data });
     return json(outcome.httpStatus, failureBody(outcome.rc, outcome.errorCode, outcome.errorMessage));
   }
 
-  if (["/api/v1/jadwal", "/api/v1/presensi"].includes(url.pathname)) {
-    return json(405, failureBody(
-      RC.INVALID_REQUEST,
-      "method_not_allowed",
-      "Use GET /api/v1/jadwal or POST /api/v1/presensi.",
-    ));
-  }
-
+  if (["/api/v1/jadwal", "/api/v1/presensi"].includes(url.pathname)) return json(405, failureBody(RC.INVALID_REQUEST, "method_not_allowed", "Use GET /api/v1/jadwal or POST /api/v1/presensi."));
   return json(404, failureBody(RC.INVALID_REQUEST, "not_found", "Endpoint not found."));
 }
-
-export default {
-  fetch(request, env, ctx) {
-    return handleRequest(request, env, fetch, ctx);
-  },
-};
+export default { fetch(request, env, ctx) { return handleRequest(request, env, fetch, ctx); } };

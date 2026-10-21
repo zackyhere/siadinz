@@ -1,228 +1,32 @@
-const SESSION_COOKIE = "__Host-siadinz_session";
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
+const COOKIE = "__Host-siadinz_session";
+const TTL = 86_400_000;
+const enc = new TextEncoder();
+const dec = new TextDecoder();
 
-export const dashboardCss = `:root{font-family:system-ui,sans-serif;color:#172033;background:#f4f7fb}body{margin:0}main{max-width:1100px;margin:auto;padding:24px}header{display:flex;gap:18px;align-items:center;margin-bottom:32px}header a,.link{color:#0753a6;font-weight:650;text-decoration:none;background:none;border:0;padding:0;cursor:pointer;font:inherit}header form{margin-left:auto}.card,section{background:#fff;border:1px solid #dbe3ef;border-radius:12px;padding:24px;box-shadow:0 2px 10px #15335c0d}.login{max-width:380px;margin:12vh auto}label{display:grid;gap:8px;margin:16px 0;font-weight:600}input,textarea{font:inherit;border:1px solid #aebed2;border-radius:8px;padding:10px}textarea{min-height:100px}button{background:#0753a6;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.table{overflow:auto}table{border-collapse:collapse;width:100%;background:#fff}th,td{padding:12px;text-align:left;border-bottom:1px solid #dbe3ef;white-space:nowrap}.status{font-weight:700}.available{color:#087f3d}.attended{color:#0753a6}.not_started{color:#875800}.error{color:#a01818;background:#fff0f0;padding:10px;border-radius:8px}`;
-
-function base64url(bytes) {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-}
-
-function fromBase64url(value) {
-  const padded = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]);
-}
-
-function responseHtml(html, status = 200, headers = {}) {
-  return new Response(html, { status, headers: {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store",
-    "content-security-policy": "default-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-    "referrer-policy": "no-referrer",
-    "x-content-type-options": "nosniff",
-    "x-frame-options": "DENY",
-    ...headers,
-  } });
-}
-
-function redirect(location, headers = {}) {
-  return new Response(null, { status: 303, headers: { location, "cache-control": "no-store", ...headers } });
-}
-
-function parseCookies(request) {
-  return Object.fromEntries((request.headers.get("cookie") ?? "").split(";").flatMap((part) => {
-    const separator = part.indexOf("=");
-    return separator > 0 ? [[part.slice(0, separator).trim(), part.slice(separator + 1).trim()]] : [];
-  }));
-}
-
-async function hmac(value, signingKey) {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(signingKey), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value)));
-}
-
-async function sameSecret(left, right) {
-  if (typeof left !== "string" || !right) return false;
-  const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(left)),
-    crypto.subtle.digest("SHA-256", encoder.encode(right)),
-  ]);
-  const a = new Uint8Array(leftHash);
-  const b = new Uint8Array(rightHash);
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1) difference |= a[index] ^ b[index];
-  return difference === 0;
-}
-
-async function createSession(signingKey) {
-  const payload = { exp: Date.now() + SESSION_TTL_MS, csrf: base64url(crypto.getRandomValues(new Uint8Array(32))) };
-  const encoded = base64url(encoder.encode(JSON.stringify(payload)));
-  return `${encoded}.${base64url(await hmac(encoded, signingKey))}`;
-}
-
-async function verifySession(token, signingKey) {
-  if (!token || !signingKey) return null;
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature) return null;
-  const expected = base64url(await hmac(encoded, signingKey));
-  if (expected.length !== signature.length || !await sameSecret(expected, signature)) return null;
-  try {
-    const payload = JSON.parse(decoder.decode(fromBase64url(encoded)));
-    return Number.isFinite(payload.exp) && payload.exp > Date.now() && typeof payload.csrf === "string" ? payload : null;
-  } catch { return null; }
-}
-
-function sessionCookie(value) {
-  return `${SESSION_COOKIE}=${value}; Max-Age=${SESSION_TTL_MS / 1000}; Path=/; HttpOnly; Secure; SameSite=Strict`;
-}
-
-function expiredSessionCookie() {
-  return `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`;
-}
-
+export const dashboardCss = `:root{font-family:system-ui,sans-serif;color:#172033;background:#f4f7fb}body{margin:0}main{max-width:1100px;margin:auto;padding:24px}header{display:flex;gap:18px;align-items:center;margin-bottom:32px}header a,.link{color:#0753a6;font-weight:650;text-decoration:none;background:none;border:0;padding:0;cursor:pointer;font:inherit}header form{margin-left:auto}.card,section{background:#fff;border:1px solid #dbe3ef;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 10px #15335c0d}.login{max-width:380px;margin:12vh auto}label{display:grid;gap:8px;margin:16px 0;font-weight:600}input,textarea{font:inherit;border:1px solid #aebed2;border-radius:8px;padding:10px}textarea{min-height:100px}button{background:#0753a6;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.table{overflow:auto}table{border-collapse:collapse;width:100%;background:#fff}th,td{padding:12px;text-align:left;border-bottom:1px solid #dbe3ef;white-space:nowrap}.status{font-weight:700}.available{color:#087f3d}.attended{color:#0753a6}.not_started{color:#875800}.skipped{color:#8a1c68}.error{color:#a01818;background:#fff0f0;padding:10px;border-radius:8px}.setting{border-top:1px solid #dbe3ef;margin-top:18px;padding-top:8px}`;
+const b64 = (bytes) => { let v=""; for (const byte of bytes) v+=String.fromCharCode(byte); return btoa(v).replaceAll("+","-").replaceAll("/","_").replaceAll("=",""); };
+const unb64 = (value) => Uint8Array.from(atob(value.replaceAll("-","+").replaceAll("_","/").padEnd(Math.ceil(value.length/4)*4,"=")), (c)=>c.charCodeAt(0));
+const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+function html(content,status=200,headers={}) { return new Response(content,{status,headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","content-security-policy":"default-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'","referrer-policy":"no-referrer","x-content-type-options":"nosniff","x-frame-options":"DENY",...headers}}); }
+function page(title,body,status=200) { return html(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · SiAdin</title><style>${dashboardCss}</style></head><body><main>${body}</main></body></html>`,status); }
+const redirect=(location,headers={})=>new Response(null,{status:303,headers:{location,"cache-control":"no-store",...headers}});
+function cookies(req){return Object.fromEntries((req.headers.get("cookie")??"").split(";").flatMap(p=>{const i=p.indexOf("=");return i>0?[[p.slice(0,i).trim(),p.slice(i+1).trim()]]:[]}));}
+async function same(left,right){if(typeof left!=="string"||!right)return false;const[x,y]=await Promise.all([crypto.subtle.digest("SHA-256",enc.encode(left)),crypto.subtle.digest("SHA-256",enc.encode(right))]);const a=new Uint8Array(x),b=new Uint8Array(y);let d=0;for(let i=0;i<a.length;i+=1)d|=a[i]^b[i];return d===0;}
+async function mac(value,keyText){const key=await crypto.subtle.importKey("raw",enc.encode(keyText),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(value)));}
+async function createSession(key){const payload={exp:Date.now()+TTL,csrf:b64(crypto.getRandomValues(new Uint8Array(32)))};const p=b64(enc.encode(JSON.stringify(payload)));return `${p}.${b64(await mac(p,key))}`;}
+async function verifySession(value,key){if(!value)return null;const[p,s]=value.split(".");if(!p||!s||!await same(b64(await mac(p,key)),s))return null;try{const v=JSON.parse(dec.decode(unb64(p)));return v.exp>Date.now()?v:null;}catch{return null;}}
+function csrf(req,form,session){const origin=new URL(req.url).origin;let ref=false;try{ref=new URL(req.headers.get("referer")).origin===origin;}catch{}return form.get("csrf")===session.csrf&&(req.headers.get("origin")===origin||ref||req.headers.get("sec-fetch-site")==="same-origin");}
 export class CredentialConfigurationError extends Error {}
-
-async function encryptionKey(secret) {
-  const raw = fromBase64url(secret);
-  if (raw.length !== 32) throw new Error("CONFIG_ENCRYPTION_KEY must be a base64url-encoded 32-byte key.");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
-
-async function encrypt(value, secret) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await encryptionKey(secret), encoder.encode(value));
-  return JSON.stringify({ v: 1, iv: base64url(iv), ct: base64url(new Uint8Array(ciphertext)) });
-}
-
-async function decrypt(value, secret) {
-  const envelope = JSON.parse(value);
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64url(envelope.iv) }, await encryptionKey(secret), fromBase64url(envelope.ct));
-  return decoder.decode(plaintext);
-}
-
-async function readSetting(database, key, encryptionSecret) {
-  try {
-    const row = await database.prepare("SELECT ciphertext FROM dashboard_settings WHERE setting_key = ?").bind(key).first();
-    return row ? await decrypt(row.ciphertext, encryptionSecret) : null;
-  } catch {
-    throw new CredentialConfigurationError("Stored dashboard credentials cannot be read with the current encryption key.");
-  }
-}
-
-export async function effectiveCredentials(env) {
-  const [accessToken, apiSecret] = await Promise.all([
-    readSetting(env.DB, "PRESENSI_ACCESS_TOKEN", env.CONFIG_ENCRYPTION_KEY),
-    readSetting(env.DB, "PRESENSI_API_SECRET", env.CONFIG_ENCRYPTION_KEY),
-  ]);
-  return { accessToken: accessToken || env.PRESENSI_ACCESS_TOKEN, apiSecret: apiSecret || env.PRESENSI_API_SECRET };
-}
-
-function layout(title, body) {
-  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · SiAdin</title><style>${dashboardCss}</style></head><body><main>${body}</main></body></html>`;
-}
-
-function loginPage(error = "") {
-  return responseHtml(layout("Login", `<section class="card login"><h1>SiAdin Dashboard</h1><p>Masuk untuk mengelola integrasi presensi.</p>${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<form method="post" action="/login"><label>Password<input type="password" name="password" autocomplete="current-password" required autofocus></label><button type="submit">Masuk</button></form></section>`));
-}
-
-function nav(csrf) {
-  return `<header><a href="/dashboard">Dashboard</a><a href="/settings">Settings</a><form method="post" action="/logout"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><button class="link" type="submit">Keluar</button></form></header>`;
-}
-
-function attendanceRows(schedules) {
-  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerName || schedule.lecturerCode)}</td><td><span class="status ${escapeHtml(schedule.status)}">${escapeHtml(schedule.status)}</span></td></tr>`).join("");
-}
-
-function fullScheduleRows(schedules) {
-  const slots = schedules.flatMap((course) => course.slots.map((slot) => ({ course, slot })));
-  slots.sort(({ course: leftCourse, slot: left }, { course: rightCourse, slot: right }) =>
-    left.weekdayOrder - right.weekdayOrder
-    || left.startTimeOrder - right.startTimeOrder
-    || String(leftCourse.courseCode).localeCompare(String(rightCourse.courseCode)),
-  );
-  return slots.map(({ course, slot }) => `<tr><td>${escapeHtml(course.courseName)}</td><td>${escapeHtml(course.courseCode)}</td><td>${escapeHtml(course.classGroup)}</td><td>${escapeHtml(course.credits)}</td><td>${escapeHtml(slot.day)}</td><td>${escapeHtml(slot.session)}</td><td>${escapeHtml(slot.room)}</td></tr>`).join("");
-}
-
-function dashboardPage(session, data, message = "") {
-  const attendance = data.attendance;
-  const courseSchedule = data.courseSchedule?.schedules ?? [];
-  const presensiRows = attendanceRows(attendance.schedules);
-  const courseRows = fullScheduleRows(courseSchedule);
-  return responseHtml(layout("Dashboard", `${nav(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Status agregat: <strong>${escapeHtml(attendance.state)}</strong></p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${presensiRows || "<tr><td colspan=7>Tidak ada jadwal presensi.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah semester ini</h1><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>SKS</th><th>Hari</th><th>Sesi</th><th>Ruang</th></tr></thead><tbody>${courseRows || "<tr><td colspan=7>Data jadwal mata kuliah tidak tersedia.</td></tr>"}</tbody></table></div></section>`));
-}
-
-function settingsPage(session, configured, message = "") {
-  return responseHtml(layout("Settings", `${nav(session.csrf)}<section class="card"><h1>Settings</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<p>Nilai kosong mempertahankan nilai yang ada. Nilai tidak pernah ditampilkan kembali.</p><p>Access token: <strong>${configured.accessToken ? "configured" : "missing"}</strong>. API secret: <strong>${configured.apiSecret ? "configured" : "missing"}</strong>.</p><form method="post" action="/settings"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><label>PRESENSI_ACCESS_TOKEN<textarea name="accessToken" autocomplete="off" spellcheck="false"></textarea></label><label>PRESENSI_API_SECRET<input type="password" name="apiSecret" autocomplete="new-password"></label><button type="submit">Simpan terenkripsi</button></form></section>`));
-}
-
-function csrfValid(request, form, session) {
-  const expectedOrigin = new URL(request.url).origin;
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
-  const fetchSite = request.headers.get("sec-fetch-site");
-  const sameOriginReferer = referer && (() => {
-    try { return new URL(referer).origin === expectedOrigin; } catch { return false; }
-  })();
-  const browserSameOrigin = origin === expectedOrigin
-    || sameOriginReferer
-    || fetchSite === "same-origin";
-  return browserSameOrigin && form.get("csrf") === session.csrf;
-}
-
-export async function handleDashboardRequest(request, env, attendanceLoader) {
-  const url = new URL(request.url);
-  if (!env.DASHBOARD_PASSWORD || !env.SESSION_SIGNING_KEY || !env.CONFIG_ENCRYPTION_KEY) return responseHtml(layout("Configuration error", "<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>"), 500);
-  if (url.pathname === "/login" && request.method === "GET") return loginPage();
-  if (url.pathname === "/login" && request.method === "POST") {
-    const form = await request.formData();
-    if (!await sameSecret(form.get("password"), env.DASHBOARD_PASSWORD)) return loginPage("Password salah.");
-    return redirect("/dashboard", { "set-cookie": sessionCookie(await createSession(env.SESSION_SIGNING_KEY)) });
-  }
-  const session = await verifySession(parseCookies(request)[SESSION_COOKIE], env.SESSION_SIGNING_KEY);
-  if (!session) return redirect("/login");
-  if (url.pathname === "/logout" && request.method === "POST") {
-    const form = await request.formData();
-    return csrfValid(request, form, session) ? redirect("/login", { "set-cookie": expiredSessionCookie() }) : responseHtml(layout("Forbidden", "<section class=card><h1>Forbidden</h1></section>"), 403);
-  }
-  if (url.pathname === "/settings" && request.method === "GET") {
-    try {
-      const credentials = await effectiveCredentials(env);
-      return settingsPage(session, { accessToken: Boolean(credentials.accessToken), apiSecret: Boolean(credentials.apiSecret) });
-    } catch (error) {
-      if (error instanceof CredentialConfigurationError) {
-        return settingsPage(session, { accessToken: false, apiSecret: false }, "Kredensial tersimpan tidak dapat didekripsi. Isi ulang kedua nilai untuk menggantinya.");
-      }
-      return settingsPage(session, { accessToken: false, apiSecret: false }, "Konfigurasi tidak dapat dibaca. Anda dapat menyimpan ulang kedua nilai.");
-    }
-  }
-  if (url.pathname === "/settings" && request.method === "POST") {
-    const form = await request.formData();
-    if (!csrfValid(request, form, session)) return responseHtml(layout("Forbidden", "<section class=card><h1>Forbidden</h1></section>"), 403);
-    const values = [["PRESENSI_ACCESS_TOKEN", "accessToken"], ["PRESENSI_API_SECRET", "apiSecret"]]
-      .map(([key, field]) => [key, String(form.get(field) ?? "").trim()]);
-    if (values.some(([, value]) => !value)) {
-      return settingsPage(session, { accessToken: false, apiSecret: false }, "Isi kedua nilai untuk menyimpan konfigurasi.");
-    }
-    try {
-      for (const [key, value] of values) {
-        await env.DB.prepare("INSERT INTO dashboard_settings (setting_key, ciphertext, updated_at) VALUES (?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET ciphertext = excluded.ciphertext, updated_at = excluded.updated_at").bind(key, await encrypt(value, env.CONFIG_ENCRYPTION_KEY), new Date().toISOString()).run();
-      }
-      return redirect("/settings");
-    } catch {
-      return settingsPage(session, { accessToken: false, apiSecret: false }, "Konfigurasi tidak dapat disimpan. Periksa binding D1 dan kunci enkripsi.");
-    }
-  }
-  if (url.pathname === "/" || url.pathname === "/dashboard") {
-    try { return dashboardPage(session, await attendanceLoader()); } catch { return dashboardPage(session, { attendance: { state: "error", schedules: [] }, courseSchedule: { schedules: [] } }, "Jadwal tidak dapat dimuat."); }
-  }
-  return responseHtml(layout("Not found", "<section class=card><h1>Not found</h1></section>"), 404);
-}
+async function cryptKey(secret){const raw=unb64(secret);if(raw.length!==32)throw new CredentialConfigurationError("Invalid encryption key.");return crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);}
+async function encrypt(value,secret){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},await cryptKey(secret),enc.encode(value));return JSON.stringify({iv:b64(iv),ct:b64(new Uint8Array(ct))});}
+async function decrypt(value,secret){const e=JSON.parse(value);return dec.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(e.iv)},await cryptKey(secret),unb64(e.ct)));}
+export async function readSetting(db,key,secret){try{const row=await db.prepare("SELECT ciphertext FROM dashboard_settings WHERE setting_key = ?").bind(key).first();return row?await decrypt(row.ciphertext,secret):null;}catch{throw new CredentialConfigurationError("Stored setting cannot be decrypted.");}}
+export async function writeSetting(db,key,value,secret){await db.prepare("INSERT INTO dashboard_settings (setting_key, ciphertext, updated_at) VALUES (?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET ciphertext=excluded.ciphertext, updated_at=excluded.updated_at").bind(key,await encrypt(value,secret),new Date().toISOString()).run();}
+export async function effectiveCredentials(env){const[a,b,c,d]=await Promise.all([readSetting(env.DB,"PRESENSI_ACCESS_TOKEN",env.CONFIG_ENCRYPTION_KEY),readSetting(env.DB,"PRESENSI_API_SECRET",env.CONFIG_ENCRYPTION_KEY),readSetting(env.DB,"SIADIN_USERNAME",env.CONFIG_ENCRYPTION_KEY),readSetting(env.DB,"SIADIN_PASSWORD",env.CONFIG_ENCRYPTION_KEY)]);return{accessToken:a||env.PRESENSI_ACCESS_TOKEN,apiSecret:b||env.PRESENSI_API_SECRET,username:c,password:d};}
+function nav(csrfToken){return `<header><a href="/dashboard">Dashboard</a><a href="/gettoken">Get token</a><a href="/webhook">Webhook</a><a href="/settings">Settings</a><form method="post" action="/logout"><input type="hidden" name="csrf" value="${esc(csrfToken)}"><button class="link">Keluar</button></form></header>`;}
+function login(error=""){return page("Login",`<section class="card login"><h1>SiAdin Dashboard</h1>${error?`<p class="error">${esc(error)}</p>`:""}<form method="post" action="/login"><label>Password<input type="password" name="password" required autofocus></label><button>Masuk</button></form></section>`);}
+function settings(session,state,msg=""){const form=(field,label,type="text")=>`<form class="setting" method="post" action="/settings"><input type="hidden" name="csrf" value="${esc(session.csrf)}"><input type="hidden" name="scope" value="${field}"><label>${label}<input type="${type}" name="${field}" required></label><button>Simpan ${label}</button></form>`;return page("Settings",`${nav(session.csrf)}<section class="card"><h1>Settings</h1>${msg?`<p class="error">${esc(msg)}</p>`:""}<p>NIM/password dan secret disimpan terenkripsi. Token diperbarui otomatis.</p><p>NIM: <strong>${state.username?"configured":"missing"}</strong>; Password: <strong>${state.password?"configured":"missing"}</strong>; API secret: <strong>${state.apiSecret?"configured":"missing"}</strong>.</p>${form("username","NIM / username")}${form("password","Password SiAdin","password")}${form("apiSecret","PRESENSI_API_SECRET","password")}<form class="setting" method="post" action="/settings"><input type="hidden" name="csrf" value="${esc(session.csrf)}"><input type="hidden" name="scope" value="all"><label>NIM / username<input name="username" required></label><label>Password SiAdin<input type="password" name="password" required></label><label>PRESENSI_API_SECRET<input type="password" name="apiSecret" required></label><button>Simpan semua</button></form></section>`);}
+function webhook(session,c,msg=""){return page("Webhook",`${nav(session.csrf)}<section class="card"><h1>Discord webhook</h1>${msg?`<p class="error">${esc(msg)}</p>`:""}<p>URL terenkripsi dan tidak pernah ditampilkan kembali.</p><p>Webhook: <strong>${c.url?"configured":"missing"}</strong>.</p><form method="post" action="/webhook"><input type="hidden" name="csrf" value="${esc(session.csrf)}"><label>Discord webhook URL<input type="url" name="url"></label><label><input type="checkbox" name="presensi" ${c.presensiEnabled?"checked":""}> Presensi berhasil</label><label><input type="checkbox" name="apiPresensi" ${c.apiPresensiEnabled?"checked":""}> API presensi di-hit</label><label><input type="checkbox" name="settings" ${c.settingsEnabled?"checked":""}> Settings diperbarui</label><label><input type="checkbox" name="tokenRefresh" ${c.tokenRefreshEnabled?"checked":""}> Token diperbarui</label><button>Simpan webhook</button></form></section>`);}
+function tokenPage(s,r={}){return page("Get token",`${nav(s.csrf)}<section class="card"><h1>Get access token</h1>${r.error?`<p class="error">${esc(r.error)}</p>`:""}<form method="post" action="/gettoken"><input type="hidden" name="csrf" value="${esc(s.csrf)}"><label>NIM / username<input name="username" required></label><label>Password<input type="password" name="password" required></label><button>Dapatkan token</button></form>${r.accessToken?`<label>Access token<textarea readonly>${esc(r.accessToken)}</textarea></label>`:""}</section>`);}
+function dashboard(s,d,msg=""){const a=d.attendance,skipped=new Set(a.skippedKeys??[]),today=new Set(a.todayCourseKeys??[]);const attendanceRows=a.schedules.map(x=>`<tr><td>${esc(x.courseName)}</td><td>${esc(x.courseCode)}</td><td>${esc(x.classGroup)}</td><td>${esc(x.date)}</td><td>${esc(x.startTime)}–${esc(x.endTime)}</td><td>${esc(x.lecturerCode)}</td><td>${esc(x.status)}</td></tr>`).join("");const courseRows=(d.courseSchedule?.schedules??[]).flatMap(c=>c.slots.map(slot=>({c,slot}))).sort((x,y)=>x.slot.weekdayOrder-y.slot.weekdayOrder||x.slot.startTimeOrder-y.slot.startTimeOrder).map(({c,slot})=>{const key=`${c.courseCode}\u0000${c.classGroup}`,isToday=today.has(key),isSkipped=skipped.has(key),action=isToday?`<form method="post" action="${isSkipped?"/skip/cancel":"/skip"}"><input type="hidden" name="csrf" value="${esc(s.csrf)}"><input type="hidden" name="key" value="${esc(key)}"><button class="link">${isSkipped?"Batal skip":"Skip hari ini"}</button></form>`:"";return `<tr><td>${esc(c.courseName)}</td><td>${esc(c.courseCode)}</td><td>${esc(c.classGroup)}</td><td>${esc(c.credits)}</td><td>${esc(slot.day)}</td><td>${esc(slot.session)}</td><td>${esc(slot.room)}</td><td>${action}</td></tr>`;}).join("");return page("Dashboard",`${nav(s.csrf)}<section><h1>Jadwal presensi hari ini</h1>${msg?`<p class="error">${esc(msg)}</p>`:""}<div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${attendanceRows||"<tr><td colspan=7>Presensi belum tersedia.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah semester ini</h1><p>Skip muncul untuk jadwal yang berlangsung hari ini menurut waktu WIB, meskipun admin belum membuka presensi.</p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>SKS</th><th>Hari</th><th>Sesi</th><th>Ruang</th><th>Aksi</th></tr></thead><tbody>${courseRows||"<tr><td colspan=8>Data tidak tersedia.</td></tr>"}</tbody></table></div></section>`);}
+export async function handleDashboardRequest(req,env,load,tokenFetcher,auto={}){const url=new URL(req.url);if(!env.DASHBOARD_PASSWORD||!env.SESSION_SIGNING_KEY||!env.CONFIG_ENCRYPTION_KEY)return page("Configuration error","<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>",500);if(url.pathname==="/login"&&req.method==="GET")return login();if(url.pathname==="/login"&&req.method==="POST"){const f=await req.formData();if(!await same(f.get("password"),env.DASHBOARD_PASSWORD))return login("Password salah.");return redirect("/dashboard",{"set-cookie":`${COOKIE}=${await createSession(env.SESSION_SIGNING_KEY)}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict`});}const s=await verifySession(cookies(req)[COOKIE],env.SESSION_SIGNING_KEY);if(!s)return redirect("/login");if(url.pathname==="/logout"&&req.method==="POST"){const f=await req.formData();return csrf(req,f,s)?redirect("/login",{"set-cookie":`${COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`}):page("Forbidden","<h1>Forbidden</h1>",403);}if(url.pathname==="/settings"&&req.method==="GET"){try{return settings(s,await effectiveCredentials(env));}catch{return settings(s,{},"Konfigurasi tidak dapat dibaca.");}}if(url.pathname==="/settings"&&req.method==="POST"){const f=await req.formData();if(!csrf(req,f,s))return page("Forbidden","<h1>Forbidden</h1>",403);const scope=String(f.get("scope")||"all");const map={username:"SIADIN_USERNAME",password:"SIADIN_PASSWORD",apiSecret:"PRESENSI_API_SECRET",accessToken:"PRESENSI_ACCESS_TOKEN"};const fields=scope==="all"?["username","password","apiSecret"]:[scope];try{for(const field of fields){const v=String(f.get(field)??"").trim();if(!v)throw Error();await writeSetting(env.DB,map[field],v,env.CONFIG_ENCRYPTION_KEY);}auto.notify?.("settings","⚙️ Settings diperbarui.");return redirect("/settings");}catch{return settings(s,{},"Nilai wajib diisi dan tidak dapat disimpan.");}}if(url.pathname==="/webhook"&&req.method==="GET")return webhook(s,await auto.webhookConfig());if(url.pathname==="/webhook"&&req.method==="POST"){const f=await req.formData();if(!csrf(req,f,s))return page("Forbidden","<h1>Forbidden</h1>",403);await auto.saveWebhook(String(f.get("url")??"").trim(),{"DISCORD_WEBHOOK_PRESENSI_ENABLED":f.get("presensi")==="on","DISCORD_WEBHOOK_API_PRESENSI_ENABLED":f.get("apiPresensi")==="on","DISCORD_WEBHOOK_SETTINGS_ENABLED":f.get("settings")==="on","DISCORD_WEBHOOK_TOKEN_REFRESH_ENABLED":f.get("tokenRefresh")==="on"});return redirect("/webhook");}if(["/skip","/skip/cancel"].includes(url.pathname)&&req.method==="POST"){const f=await req.formData();if(!csrf(req,f,s))return page("Forbidden","<h1>Forbidden</h1>",403);const key=String(f.get("key")??"");if(url.pathname==="/skip")await auto.skip(key);else await auto.unskip(key);return redirect("/dashboard");}if(url.pathname==="/gettoken"&&req.method==="GET")return tokenPage(s);if(url.pathname==="/gettoken"&&req.method==="POST"){const f=await req.formData();if(!csrf(req,f,s))return page("Forbidden","<h1>Forbidden</h1>",403);try{return tokenPage(s,{accessToken:await tokenFetcher(String(f.get("username")??""),String(f.get("password")??""))});}catch(e){return tokenPage(s,{error:e.message});}}if(url.pathname==="/"||url.pathname==="/dashboard"){try{return dashboard(s,await load());}catch{return dashboard(s,{attendance:{schedules:[],skippedKeys:[],todayCourseKeys:[]}},"Jadwal tidak dapat dimuat.");}}return page("Not found","<h1>Not found</h1>",404);}

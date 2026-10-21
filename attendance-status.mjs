@@ -39,6 +39,7 @@ export function classifySchedule(schedule) {
 function publicSchedule(source, schedule) {
   return {
     source: source.kind,
+    idMaster: schedule.id_master ? String(schedule.id_master) : null,
     courseName: schedule.nmmk ?? null,
     courseCode: schedule.kdmk ?? null,
     classGroup: schedule.klpk ?? null,
@@ -52,10 +53,11 @@ function publicSchedule(source, schedule) {
   };
 }
 
-function eligibleSchedules(sourcePayloads) {
+function eligibleSchedules(sourcePayloads, skippedKeys = new Set()) {
   return sourcePayloads.flatMap(({ source, payload }) =>
     asScheduleArray(payload, source)
       .filter((schedule) => classifySchedule(schedule) === "available")
+      .filter((schedule) => !skippedKeys.has(`${String(schedule.kdmk ?? "").trim()}\u0000${String(schedule.klpk ?? "").trim()}`))
       .map((schedule) => ({ source, schedule })),
   );
 }
@@ -236,9 +238,9 @@ export async function fetchAttendanceStatus(accessToken, fetchImpl = fetch) {
   return summarizeAttendance(sourcePayloads);
 }
 
-export async function attendAvailableSchedules(accessToken, fetchImpl = fetch) {
+export async function attendAvailableSchedules(accessToken, fetchImpl = fetch, skippedIds = new Set()) {
   const before = await fetchAttendanceSources(accessToken, fetchImpl);
-  const candidates = eligibleSchedules(before);
+  const candidates = eligibleSchedules(before, skippedIds);
   const attempted = candidates.map(attendanceIdentity);
 
   if (candidates.length === 0) {

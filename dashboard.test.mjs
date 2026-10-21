@@ -5,13 +5,18 @@ import { handleRequest } from "./worker.mjs";
 
 const encryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-function database(settings = new Map()) {
+function database(settings = new Map(), skips = new Set()) {
   return {
     prepare: (statement) => ({
       bind: (...values) => ({
         first: async () => settings.has(values[0]) ? { ciphertext: settings.get(values[0]) } : null,
+        all: async () => statement.includes("presensi_skips")
+          ? { results: [...skips].filter((value) => value.endsWith(`\u0000${values[0]}`)).map((value) => ({ id_master: value.split("\u0000")[0] })) }
+          : { results: [] },
         run: async () => {
           if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
+          else if (statement.includes("INSERT OR IGNORE INTO presensi_skips")) skips.add(`${values[0]}\u0000${values[1]}`);
+          else if (statement.includes("DELETE FROM presensi_skips")) skips.delete(`${values[0]}\u0000${values[1]}`);
           return { success: true };
         },
       }),
@@ -85,73 +90,91 @@ test("dashboard session is secure and displays both schedule sources", async () 
   assert.doesNotMatch(html, /initial-access-token/);
 });
 
-test("settings encrypt credentials and API reads updated values", async () => {
+test("settings encrypts NIM password and API secret", async () => {
   const settings = new Map();
   const env = dashboardEnv(settings);
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-  const settingsPage = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
-  const html = await settingsPage.text();
-  const csrf = /name="csrf" value="([^"]+)"/.exec(html)?.[1];
-  assert.ok(csrf);
-
-  const save = await handleRequest(formRequest("/settings", {
-    csrf,
-    accessToken: "updated-access-token",
-    apiSecret: "updated-api-secret",
-  }, { cookie, origin: "https://siadinz.example" }), env, upstream());
-  assert.equal(save.status, 303);
-  assert.notEqual(settings.get("PRESENSI_ACCESS_TOKEN"), "updated-access-token");
-  assert.notEqual(settings.get("PRESENSI_API_SECRET"), "updated-api-secret");
-
-  let authorization;
-  const response = await handleRequest(new Request("https://siadinz.example/api/v1/jadwal", {
-    headers: { "x-api-secret": "updated-api-secret" },
-  }), env, async (input, init = {}) => {
-    authorization = init.headers.authorization;
-    return upstream()(input, init);
-  });
-  assert.equal(response.status, 200);
-  assert.equal(authorization, "Bearer updated-access-token");
-});
-
-test("settings accepts a same-origin Referer when Origin is absent", async () => {
-  const env = dashboardEnv();
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-  const settingsPage = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
-  const csrf = /name="csrf" value="([^"]+)"/.exec(await settingsPage.text())?.[1];
-
-  const save = await handleRequest(formRequest("/settings", {
-    csrf, accessToken: "replacement-token", apiSecret: "replacement-secret",
-  }, { cookie, referer: "https://siadinz.example/settings" }), env, upstream());
-
-  assert.equal(save.status, 303);
-});
-
-test("settings renders a recovery page when stored ciphertext is invalid", async () => {
-  const settings = new Map([["PRESENSI_ACCESS_TOKEN", "not-an-encrypted-envelope"]]);
-  const env = dashboardEnv(settings);
-  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
-  const cookie = login.headers.get("set-cookie");
-
-  const response = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
-  const html = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.match(html, /Kredensial tersimpan tidak dapat didekripsi/);
-});
-
-test("settings accepts same-origin Sec-Fetch-Site when Origin and Referer are absent", async () => {
-  const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
   const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
   const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
 
   const save = await handleRequest(formRequest("/settings", {
-    csrf, accessToken: "sec-fetch-token", apiSecret: "sec-fetch-secret",
-  }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+    csrf, username: "F11.2026.00245", password: "siadin-password", apiSecret: "updated-api-secret",
+  }, { cookie, referer: "https://siadinz.example/settings" }), env, upstream());
 
   assert.equal(save.status, 303);
+  assert.notEqual(settings.get("SIADIN_USERNAME"), "F11.2026.00245");
+  assert.notEqual(settings.get("SIADIN_PASSWORD"), "siadin-password");
+  assert.notEqual(settings.get("PRESENSI_API_SECRET"), "updated-api-secret");
+});
+
+test("settings renders a recovery page when stored ciphertext is invalid", async () => {
+  const settings = new Map([["SIADIN_PASSWORD", "not-an-encrypted-envelope"]]);
+  const env = dashboardEnv(settings);
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const response = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /Konfigurasi tidak dapat dibaca/);
+});
+
+test("settings accepts same-origin Sec-Fetch-Site", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+  const save = await handleRequest(formRequest("/settings", {
+    csrf, username: "F11.2026.00245", password: "password", apiSecret: "secret",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
+  assert.equal(save.status, 303);
+});
+
+test("gettoken displays only access token and posts credentials to SiAdin login", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+  let loginRequest;
+
+  const response = await handleRequest(formRequest("/gettoken", {
+    csrf, username: "F11.2026.00245", password: "secret-password",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, async (input, init) => {
+    if (String(input) === "https://api.dinus.ac.id/api/v1/siadin/login") {
+      loginRequest = init;
+      return new Response(JSON.stringify({ data: { access_token: "access-token-for-testing-123" } }), {
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return upstream()(input, init);
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /access-token-for-testing-123/);
+  assert.doesNotMatch(html, /secret-password/);
+  assert.equal(loginRequest.method, "POST");
+  assert.deepEqual(JSON.parse(loginRequest.body), { username: "F11.2026.00245", password: "secret-password" });
+});
+
+test("gettoken rejects cross-site form posts before upstream login", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+  let upstreamCalls = 0;
+
+  const response = await handleRequest(formRequest("/gettoken", {
+    csrf, username: "student", password: "password",
+  }, { cookie, origin: "https://attacker.example" }), env, async () => {
+    upstreamCalls += 1;
+    return new Response("{}", { headers: { "content-type": "application/json" } });
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(upstreamCalls, 0);
 });

@@ -5,13 +5,18 @@ import { handleRequest } from "./worker.mjs";
 
 const encryptionKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-function testDatabase(events = [], settings = new Map()) {
+function testDatabase(events = [], settings = new Map(), skips = new Set()) {
   return {
     prepare: (statement) => ({
       bind: (...values) => ({
         first: async () => settings.has(values[0]) ? { ciphertext: settings.get(values[0]) } : null,
+        all: async () => statement.includes("presensi_skips")
+          ? { results: [...skips].filter((value) => value.endsWith(`\u0000${values[0]}`)).map((value) => ({ id_master: value.split("\u0000")[0] })) }
+          : { results: [] },
         run: async () => {
           if (statement.includes("dashboard_settings")) settings.set(values[0], values[1]);
+          else if (statement.includes("INSERT OR IGNORE INTO presensi_skips")) skips.add(`${values[0]}\u0000${values[1]}`);
+          else if (statement.includes("DELETE FROM presensi_skips")) skips.delete(`${values[0]}\u0000${values[1]}`);
           else events.push(values);
           return { success: true };
         },
