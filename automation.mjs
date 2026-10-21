@@ -1,4 +1,6 @@
 import { readSetting, writeSetting } from "./dashboard.mjs";
+import { dailySkipKeyVariants } from "./skip-keys.mjs";
+
 
 const API_ORIGIN = "https://api.dinus.ac.id";
 const TOKEN_RENEWAL_WINDOW_MS = 60_000;
@@ -35,7 +37,7 @@ export function scheduleKey(courseCode, classGroup) { return `${String(courseCod
 export function scheduleSlotKey(courseCode, classGroup, day, session, room) { return `${scheduleKey(courseCode, classGroup)}\u0000${String(day ?? "").trim()}\u0000${String(session ?? "").trim()}\u0000${String(room ?? "").trim()}`; }
 export async function skippedScheduleKeys(database, day) { const result = await database.prepare("SELECT id_master FROM presensi_skips WHERE skip_date = ?").bind(day).all(); return new Set((result.results ?? []).map(({ id_master }) => String(id_master))); }
 export async function setDailySkip(database, key, day) { await database.prepare("INSERT OR IGNORE INTO presensi_skips (id_master, skip_date, created_at) VALUES (?, ?, ?)").bind(key, day, new Date().toISOString()).run(); }
-export async function clearDailySkip(database, key, day) { await database.prepare("DELETE FROM presensi_skips WHERE skip_date = ? AND (id_master = ? OR id_master GLOB ?)").bind(day, key, `${key}\u0000*`).run(); }
+export async function clearDailySkip(database, key, day) { const { exact, legacyPrefixes } = dailySkipKeyVariants(key); await database.prepare("DELETE FROM presensi_skips WHERE skip_date = ? AND (id_master IN (?, ?, ?) OR id_master GLOB ? OR id_master GLOB ?)").bind(day, exact[0] ?? null, exact[1] ?? null, exact[2] ?? null, legacyPrefixes[0] ?? null, legacyPrefixes[1] ?? null).run(); }
 
 export const skippedMasterIds = skippedScheduleKeys;
 export async function webhookConfiguration(env) {

@@ -1,3 +1,5 @@
+import { isSkippedCourse } from "./skip-keys.mjs";
+
 const API_ORIGIN = "https://api.dinus.ac.id";
 const USER_AGENT = "presensi-status-check/2.0";
 
@@ -58,8 +60,7 @@ function eligibleSchedules(sourcePayloads, skippedKeys = new Set()) {
     asScheduleArray(payload, source)
       .filter((schedule) => classifySchedule(schedule) === "available")
       .filter((schedule) => {
-        const courseKey = `${String(schedule.kdmk ?? "").trim()}\u0000${String(schedule.klpk ?? "").trim()}\u0000`;
-        return ![...skippedKeys].some((key) => key.startsWith(courseKey));
+        return ![...skippedKeys].some((key) => isSkippedCourse(key, schedule.kdmk, schedule.klpk));
       })
       .map((schedule) => ({ source, schedule })),
   );

@@ -45,12 +45,11 @@ function dashboardAutomation(env, fetchImpl, ctx) {
 export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
-
-  if (url.pathname === "/dashboard.js") {
-    return new Response(dashboardClientScript, {
-      headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" },
-    });
-  }
+    if (url.pathname === "/dashboard.js") {
+      return new Response(dashboardClientScript, {
+        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff" },
+      });
+    }
     return handleDashboardRequest(request, env, async () => withSiadinToken(env, fetchImpl, async (token) => {
       const [attendance, courseSchedule, skippedKeys] = await Promise.all([
         fetchAttendanceStatus(token, fetchImpl),

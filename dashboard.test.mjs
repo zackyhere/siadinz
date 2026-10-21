@@ -196,14 +196,15 @@ test("skip controls render only for the current WIB schedule slot", async () => 
 
   assert.equal((html.match(/Skip hari ini/g) ?? []).length, 1);
   assert.match(html, /RABU/);
+  assert.match(html, /name="key" value="v1:%5B%22F11\.64103%22%2C%22F11\.C101%22%5D"/);
 });
 
-test("dashboard preserves a daily course skip after refresh", async () => {
+test("dashboard preserves a malformed legacy daily course skip after refresh", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
   const courseKey = "F11.64103\u0000F11.C101";
-  const attendance = { state: "unavailable", schedules: [], skippedKeys: [courseKey], todaySlotKeys: [`${courseKey}\u0000RABU\u000010.20-12.00\u0000Lab 1`] };
+  const attendance = { state: "unavailable", schedules: [], skippedKeys: [courseKey.replace("\u0000", "\uFFFD")], todaySlotKeys: [`${courseKey}\u0000RABU\u000010.20-12.00\u0000Lab 1`] };
   const courseSchedule = { schedules: [{ courseName: "DASAR PEMROGRAMAN", courseCode: "F11.64103", classGroup: "F11.C101", credits: 4, slots: [
     { day: "RABU", session: "10.20-12.00", room: "Lab 1", weekdayOrder: 3, startTimeOrder: 620 },
   ] }] };
