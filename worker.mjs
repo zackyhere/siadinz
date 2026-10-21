@@ -1,5 +1,7 @@
 import { attendAvailableSchedules, fetchAttendanceStatus, fetchFullCourseSchedule } from "./attendance-status.mjs";
 import { effectiveCredentials, handleDashboardRequest, writeSetting, dashboardClientScript } from "./dashboard.mjs";
+import { cacheCourseSchedule, isWithinCourseHours, requestedCourseHours } from "./course-hours.mjs";
+
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
   notifyDiscord, notifyDiscordPresensi, scheduleSlotKey, setDailySkip,
@@ -42,7 +44,7 @@ function dashboardAutomation(env, fetchImpl, ctx) {
   };
 }
 
-export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
+export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = new Date()) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
     if (url.pathname === "/dashboard.js") {
@@ -51,9 +53,12 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
       });
     }
     return handleDashboardRequest(request, env, async () => withSiadinToken(env, fetchImpl, async (token) => {
+      const courseSchedulePromise = fetchFullCourseSchedule(token, fetchImpl)
+        .then(async (schedule) => { await cacheCourseSchedule(env.DB, schedule); return schedule; })
+        .catch(() => ({ schedules: [] }));
       const [attendance, courseSchedule, skippedKeys] = await Promise.all([
         fetchAttendanceStatus(token, fetchImpl),
-        fetchFullCourseSchedule(token, fetchImpl).catch(() => ({ schedules: [] })),
+        courseSchedulePromise,
         skippedScheduleKeys(env.DB, jakartaDate()),
       ]);
       const weekday = jakartaWeekday();
@@ -76,6 +81,13 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/v1/presensi") {
+    let courseHoursZone;
+    try { courseHoursZone = requestedCourseHours(request.headers); }
+    catch (error) { return json(400, failureBody(RC.INVALID_REQUEST, "invalid_time_zone", error.message)); }
+    if (courseHoursZone && !await isWithinCourseHours(env.DB, courseHoursZone, now)) {
+      return json(409, failureBody(RC.NOT_AVAILABLE, "outside_course_hours", "Current request time is outside the cached course schedule."));
+    }
+
     let outcome;
     try {
       const skipped = await skippedScheduleKeys(env.DB, jakartaDate());

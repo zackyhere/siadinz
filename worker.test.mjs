@@ -115,6 +115,23 @@ test("Worker writes a D1 audit event for no available attendance", async () => {
   assert.deepEqual(events[0].slice(1, 5), ["failed", 1, 200, 0]);
 });
 
+test("Worker rejects Jam-Matkul requests outside cached course hours before SiAdin", async () => {
+  let upstreamCalls = 0;
+  const response = await handleRequest(
+    request("/api/v1/presensi", { method: "POST", headers: { "Jam-Matkul": "true", "Time-Zone": "UTC" } }),
+    env,
+    async () => { upstreamCalls += 1; return jsonResponse({}); },
+    undefined,
+    new Date("2026-10-21T01:00:00.000Z"),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 409);
+  assert.equal(body.status, "failed");
+  assert.equal(body.error.code, "outside_course_hours");
+  assert.equal(upstreamCalls, 0);
+});
+
 test("API returns structured configuration failure for unreadable dashboard credentials", async () => {
   const settings = new Map([["PRESENSI_ACCESS_TOKEN", "invalid-ciphertext"]]);
   const testEnv = { ...env, DB: testDatabase([], settings) };
