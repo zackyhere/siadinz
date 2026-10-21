@@ -1,4 +1,5 @@
 import { renderLogin } from "./pages/auth.mjs";
+import { renderApi } from "./pages/api.mjs";
 import { renderDashboard } from "./pages/dashboard.mjs";
 import { renderNotifications } from "./pages/notifications.mjs";
 import { renderSettings } from "./pages/settings.mjs";
@@ -157,6 +158,8 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
       : forbidden();
   }
 
+  if (url.pathname === "/api" && request.method === "GET") return renderApi(session);
+
   if (url.pathname === "/settings" && request.method === "GET") {
     try {
       return renderSettings(session, await effectiveCredentials(env));
@@ -168,7 +171,7 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
     const form = await request.formData();
     if (!hasValidCsrf(request, form, session)) return forbidden();
     const scope = String(form.get("scope") || "all");
-    const fields = scope === "all" ? ["username", "password", "apiSecret"] : [scope];
+    const fields = scope === "all" ? ["username", "password", "apiSecret"] : scope === "account" ? ["username", "password"] : [scope];
     const keys = { username: "SIADIN_USERNAME", password: "SIADIN_PASSWORD", apiSecret: "PRESENSI_API_SECRET", accessToken: "PRESENSI_ACCESS_TOKEN" };
     try {
       for (const field of fields) {

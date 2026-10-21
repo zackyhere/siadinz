@@ -119,31 +119,36 @@ test("settings renders a recovery page when stored ciphertext is invalid", async
   assert.match(html, /Konfigurasi tidak dapat dibaca/);
 });
 
-test("settings accepts same-origin Sec-Fetch-Site", async () => {
+test("settings accepts an account modal save with same-origin Sec-Fetch-Site", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
   const page = await handleRequest(new Request("https://siadinz.example/settings", { headers: { cookie } }), env, upstream());
   const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
   const save = await handleRequest(formRequest("/settings", {
-    csrf, username: "F11.2026.00245", password: "password", apiSecret: "secret",
+    csrf, scope: "account", username: "F11.2026.00245", password: "password",
   }, { cookie, "sec-fetch-site": "same-origin" }), env, upstream());
   assert.equal(save.status, 303);
+  assert.equal(save.headers.get("location"), "/settings?notice=settings");
 });
 
-test("notifications replaces the retired webhook and token pages", async () => {
+test("notifications shows only Discord webhook and API page masks secrets", async () => {
   const env = dashboardEnv();
   const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
   const cookie = login.headers.get("set-cookie");
   const notifications = await handleRequest(new Request("https://siadinz.example/notifications", { headers: { cookie } }), env, upstream());
-  const html = await notifications.text();
+  const notificationHtml = await notifications.text();
+  const api = await handleRequest(new Request("https://siadinz.example/api", { headers: { cookie } }), env, upstream());
+  const apiHtml = await api.text();
   const token = await handleRequest(new Request("https://siadinz.example/gettoken", { headers: { cookie } }), env, upstream());
   const webhook = await handleRequest(new Request("https://siadinz.example/webhook", { headers: { cookie } }), env, upstream());
 
   assert.equal(notifications.status, 200);
-  assert.match(html, /Notifikasi perangkat/);
-  assert.match(html, /Webhook Discord/);
-  assert.match(html, /data-request-notification/);
+  assert.match(notificationHtml, /Webhook Discord/);
+  assert.doesNotMatch(notificationHtml, /Notifikasi perangkat/);
+  assert.equal(api.status, 200);
+  assert.match(apiHtml, /X-API-Secret: \*\*\*\*\*/);
+  assert.match(apiHtml, /data-copy-code/);
   assert.equal(token.status, 404);
   assert.equal(webhook.status, 404);
 });
@@ -189,14 +194,13 @@ test("dashboard skip route changes only the current course skip state", async ()
   assert.equal(skipped, "v1:%5B%22F11.64103%22%2C%22F11.C101%22%5D");
 });
 
-test("dashboard serves notification, logout, and skip controls", async () => {
+test("dashboard serves modal and floating-control interactions", async () => {
   const response = await handleRequest(new Request("https://siadinz.example/dashboard.js"), dashboardEnv(), upstream());
   const script = await response.text();
 
   assert.equal(response.status, 200);
   assert.match(script, /showModal/);
-  assert.match(script, /Notification\.requestPermission/);
-  assert.match(script, /new Notification/);
-  assert.match(script, /data-test-notification/);
-  assert.match(script, /localStorage/);
+  assert.match(script, /data-settings-dialog/);
+  assert.match(script, /closeSkipMenus/);
+  assert.match(script, /data-copy-code/);
 });
