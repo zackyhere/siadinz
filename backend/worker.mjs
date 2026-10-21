@@ -4,8 +4,8 @@ import { dashboardClientScript } from "../frontend/public/dashboard-client.mjs";
 import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./services/course-hours.mjs";
 
 import {
-  accessTokenForRequest, jakartaDate, jakartaWeekday, loginSiadin,
-  notifyDiscord, notifyDiscordPresensi, scheduleSlotKey,
+  accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
+  notifyDiscord, notifyDiscordPresensi, scheduleSlotKey, setDailySkip,
   skippedScheduleKeys, webhookConfiguration,
 } from "./services/automation.mjs";
 
@@ -39,6 +39,8 @@ function dashboardAutomation(env, fetchImpl, ctx) {
       if (url) await writeSetting(env.DB, "DISCORD_WEBHOOK_URL", url, env.CONFIG_ENCRYPTION_KEY);
       for (const [key, value] of Object.entries(toggles)) await writeSetting(env.DB, key, String(value), env.CONFIG_ENCRYPTION_KEY);
     },
+    skip: (key) => setDailySkip(env.DB, key, jakartaDate()),
+    unskip: (key) => clearDailySkip(env.DB, key, jakartaDate()),
     notify,
   };
 }

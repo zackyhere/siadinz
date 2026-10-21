@@ -1,3 +1,4 @@
+import { dailySkipKey, isSkippedCourse } from "../../backend/lib/skip-keys.mjs";
 import { escapeHtml, renderPage } from "../partials/layout.mjs";
 import { renderNavigation } from "../partials/navigation.mjs";
 
@@ -5,17 +6,21 @@ function attendanceFor(course, attendance) {
   return attendance.find((schedule) => schedule.courseCode === course.courseCode && schedule.classGroup === course.classGroup);
 }
 
-function attendanceButton(session, course, attendance) {
+function attendanceButton(session, course, attendance, skipped) {
   const status = attendance?.status;
-  if (status === "available") {
-    return `<form method="post" action="/attendance"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="courseCode" value="${escapeHtml(course.courseCode)}"><input type="hidden" name="classGroup" value="${escapeHtml(course.classGroup)}"><button>Absen sekarang</button></form>`;
-  }
-  if (status === "attended") return `<button type="button" disabled>Sudah absen</button>`;
-  return `<button type="button" disabled>Presensi belum dibuka</button>`;
+  const action = skipped
+    ? `<button type="button" disabled>Presensi dilewati</button>`
+    : status === "available"
+      ? `<form method="post" action="/attendance"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="courseCode" value="${escapeHtml(course.courseCode)}"><input type="hidden" name="classGroup" value="${escapeHtml(course.classGroup)}"><button>Absen sekarang</button></form>`
+      : `<button type="button" disabled>${status === "attended" ? "Sudah absen" : "Presensi belum dibuka"}</button>`;
+  const skipAction = skipped ? "/skip/cancel" : "/skip";
+  const skipLabel = skipped ? "Batal skip absen" : "Skip absen hari ini";
+  return `<div class="course-actions">${action}<details class="skip-menu"><summary aria-label="Opsi presensi"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><form method="post" action="${skipAction}"><input type="hidden" name="csrf" value="${escapeHtml(session.csrf)}"><input type="hidden" name="key" value="${escapeHtml(dailySkipKey(course.courseCode, course.classGroup))}"><button class="skip-action">${skipLabel}</button></form></details></div>`;
 }
 
 function todayCourses(session, data) {
   const todaySlots = new Set(data.attendance.todaySlotKeys ?? []);
+  const skipped = new Set(data.attendance.skippedKeys ?? []);
   const attendance = data.attendance.schedules ?? [];
   return (data.courseSchedule?.schedules ?? [])
     .flatMap((course) => course.slots.map((slot) => ({ course, slot })))
@@ -23,7 +28,8 @@ function todayCourses(session, data) {
     .sort((left, right) => left.slot.startTimeOrder - right.slot.startTimeOrder)
     .map(({ course, slot }) => {
       const current = attendanceFor(course, attendance);
-      return `<article class="today-course"><div><h2>${escapeHtml(course.courseName)}</h2><p>${escapeHtml(slot.room)} · ${escapeHtml(slot.session)}</p></div>${attendanceButton(session, course, current)}</article>`;
+      const isSkipped = [...skipped].some((key) => isSkippedCourse(key, course.courseCode, course.classGroup));
+      return `<article class="today-course"><div><h2>${escapeHtml(course.courseName)}</h2><p>${escapeHtml(slot.room)} · ${escapeHtml(slot.session)}</p></div>${attendanceButton(session, course, current, isSkipped)}</article>`;
     })
     .join("");
 }

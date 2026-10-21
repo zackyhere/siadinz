@@ -177,7 +177,7 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
         await writeSetting(env.DB, keys[field], value, env.CONFIG_ENCRYPTION_KEY);
       }
       automation.notify?.("settings", "⚙️ Settings diperbarui.");
-      return redirect("/settings");
+      return redirect("/settings?notice=settings");
     } catch {
       return renderSettings(session, {}, "Nilai wajib diisi dan tidak dapat disimpan.");
     }
@@ -198,6 +198,16 @@ export async function handleDashboardRequest(request, env, loadDashboard, attend
     } catch {
       return renderNotifications(session, await automation.webhookConfig(), "Webhook tidak dapat disimpan. Gunakan URL webhook Discord HTTPS yang valid.");
     }
+  }
+
+  if (["/skip", "/skip/cancel"].includes(url.pathname) && request.method === "POST") {
+    const form = await request.formData();
+    if (!hasValidCsrf(request, form, session)) return forbidden();
+    const key = String(form.get("key") ?? "");
+    if (!key) return redirect("/dashboard");
+    if (url.pathname === "/skip") await automation.skip(key);
+    else await automation.unskip(key);
+    return redirect(`/dashboard?notice=${url.pathname === "/skip" ? "skip" : "unskip"}`);
   }
 
   if (url.pathname === "/attendance" && request.method === "POST") {

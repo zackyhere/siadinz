@@ -171,12 +171,32 @@ test("dashboard attendance route submits only the CSRF-authorized selected cours
   assert.deepEqual(selected, { courseCode: "F11.64103", classGroup: "F11.C101" });
 });
 
-test("dashboard serves notification and logout control script", async () => {
+test("dashboard skip route changes only the current course skip state", async () => {
+  const env = dashboardEnv();
+  const login = await handleRequest(formRequest("/login", { password: "dashboard-password" }), env, upstream());
+  const cookie = login.headers.get("set-cookie");
+  const page = await handleRequest(new Request("https://siadinz.example/dashboard", { headers: { cookie } }), env, upstream());
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
+  let skipped;
+  const { handleDashboardRequest } = await import("../frontend/dashboard.mjs");
+  const response = await handleDashboardRequest(formRequest("/skip", {
+    csrf,
+    key: "v1:%5B%22F11.64103%22%2C%22F11.C101%22%5D",
+  }, { cookie, "sec-fetch-site": "same-origin" }), env, async () => ({ attendance: { schedules: [], todaySlotKeys: [] }, courseSchedule: { schedules: [] } }), async () => ({ attempted: [] }), { skip: (key) => { skipped = key; } });
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "/dashboard?notice=skip");
+  assert.equal(skipped, "v1:%5B%22F11.64103%22%2C%22F11.C101%22%5D");
+});
+
+test("dashboard serves notification, logout, and skip controls", async () => {
   const response = await handleRequest(new Request("https://siadinz.example/dashboard.js"), dashboardEnv(), upstream());
   const script = await response.text();
 
   assert.equal(response.status, 200);
   assert.match(script, /showModal/);
   assert.match(script, /Notification\.requestPermission/);
+  assert.match(script, /new Notification/);
+  assert.match(script, /data-test-notification/);
   assert.match(script, /localStorage/);
 });
