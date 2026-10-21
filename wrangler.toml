@@ -2,8 +2,10 @@ name = "siadinz"
 main = "backend/worker.mjs"
 compatibility_date = "2026-10-19"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "siadinz"
-database_id = "80b6f003-28a2-4fed-87e2-fc8caa28ed21"
-migrations_dir = "backend/migrations"
+[[durable_objects.bindings]]
+name = "APP_STORAGE"
+class_name = "AppStorage"
+
+[exports.AppStorage]
+type = "durable-object"
+storage = "sqlite"

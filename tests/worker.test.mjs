@@ -98,7 +98,7 @@ test("Worker does not submit unavailable schedules", async () => {
   assert.equal(requests.some(({ method }) => method === "POST"), false);
 });
 
-test("Worker writes a D1 audit event for no available attendance", async () => {
+test("Worker writes a persistent audit event for no available attendance", async () => {
   const events = [];
   const testEnv = { ...env, DB: testDatabase(events) };
   const fetchImpl = async (input) =>

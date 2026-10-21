@@ -153,7 +153,7 @@ function sessionCookie(value, maxAge) {
 
 export async function handleDashboardRequest(request, env, loadDashboard, attendCourse, automation = {}) {
   const url = new URL(request.url);
-  if (!env.DB) return renderPage("Configuration error", "<section class=card><h1>Dashboard belum dikonfigurasi</h1></section>", 500);
+  if (!env.DB) return renderPage("Configuration error", "<section class=card><h1>Penyimpanan Worker belum dikonfigurasi</h1></section>", 500);
   const { encryptionKey, sessionSigningKey } = configuration(env);
   let dashboardPassword;
   try {

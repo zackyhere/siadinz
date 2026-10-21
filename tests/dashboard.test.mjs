@@ -63,7 +63,7 @@ test("dashboard routes redirect unauthenticated users to login", async () => {
   assert.equal(response.headers.get("location"), "/login");
 });
 
-test("zero-variable bootstrap accepts 123456 and preserves a dashboard password saved in D1", async () => {
+test("zero-variable bootstrap accepts 123456 and preserves a dashboard password in Worker storage", async () => {
   const settings = new Map();
   const env = { DB: database(settings) };
   const login = await handleRequest(formRequest("/login", { password: "123456" }), env, upstream());

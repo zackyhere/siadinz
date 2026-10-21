@@ -2,7 +2,7 @@ import { attendAvailableCourse, attendAvailableSchedules, fetchAttendanceStatus,
 import { configuration, effectiveCredentials, handleDashboardRequest, writeSetting } from "../frontend/dashboard.mjs";
 import { dashboardClientScript } from "../frontend/public/dashboard-client.mjs";
 import { cacheCourseSchedule, courseHoursTimeContext, isWithinCourseHours, requestedCourseHours } from "./services/course-hours.mjs";
-import { ensureDatabaseSchema } from "./lib/database-schema.mjs";
+import { AppStorage, databaseFor } from "./lib/storage.mjs";
 
 import {
   accessTokenForRequest, clearDailySkip, jakartaDate, jakartaWeekday, loginSiadin,
@@ -53,13 +53,11 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
       headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
     });
   }
-  if (env.DB) {
-    try { await ensureDatabaseSchema(env.DB); }
-    catch (error) {
-      console.error("Failed to initialize D1 schema:", error);
-      return url.pathname.startsWith("/api/") ? json(500, failureBody(RC.SERVER_MISCONFIGURED, "database_unavailable", "Worker D1 database is not available.")) : new Response("Database belum dapat diinisialisasi.", { status: 500 });
-    }
-  }
+  const database = databaseFor(env);
+  if (!database) return url.pathname.startsWith("/api/")
+    ? json(500, failureBody(RC.SERVER_MISCONFIGURED, "storage_unavailable", "Worker storage binding is not configured."))
+    : new Response("Penyimpanan Worker belum dikonfigurasi.", { status: 500 });
+  env = { ...env, DB: database };
   if (!url.pathname.startsWith("/api/")) {
     const loadDashboard = async () => withSiadinToken(env, fetchImpl, async (token) => {
       const courseSchedulePromise = fetchFullCourseSchedule(token, fetchImpl)
@@ -85,7 +83,7 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
     return handleDashboardRequest(request, env, loadDashboard, attendCourse, dashboardAutomation(env, fetchImpl, ctx));
   }
 
-  if (!env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Worker D1 binding is not configured."));
+  if (!env.DB) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "storage_unavailable", "Worker storage binding is not configured."));
   let apiSecret;
   try { apiSecret = (await effectiveCredentials(env)).apiSecret; } catch { return json(500, failureBody(RC.SERVER_MISCONFIGURED, "credential_configuration_invalid", "Stored attendance credentials cannot be decrypted with the current encryption key.")); }
   if (!apiSecret) return json(500, failureBody(RC.SERVER_MISCONFIGURED, "server_misconfigured", "Attendance API secret is not configured."));
@@ -125,4 +123,5 @@ export async function handleRequest(request, env, fetchImpl = fetch, ctx, now = 
   if (["/api/v1/jadwal", "/api/v1/presensi"].includes(url.pathname)) return json(405, failureBody(RC.INVALID_REQUEST, "method_not_allowed", "Use GET /api/v1/jadwal or POST /api/v1/presensi."));
   return json(404, failureBody(RC.INVALID_REQUEST, "not_found", "Endpoint not found."));
 }
+export { AppStorage };
 export default { fetch(request, env, ctx) { return handleRequest(request, env, fetch, ctx); } };
