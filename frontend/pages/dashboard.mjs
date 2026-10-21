@@ -2,8 +2,17 @@ import { dailySkipKey, isSkippedCourse, legacyCourseKey } from "../../backend/li
 import { escapeHtml, renderPage } from "../partials/layout.mjs";
 import { renderNavigation } from "../partials/navigation.mjs";
 
+function statusLabel(status) {
+  return ({ available: "Tersedia", attended: "Sudah presensi", not_started: "Belum jadwal", unavailable: "Tidak tersedia", skipped: "Dilewati" })[status] ?? status;
+}
+
+function renderStatus(status) {
+  const value = String(status ?? "unavailable").replace(/[^a-z_]/g, "");
+  return `<span class="status status--${escapeHtml(value)}">${escapeHtml(statusLabel(value))}</span>`;
+}
+
 function renderAttendanceRows(schedules) {
-  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerCode)}</td><td>${escapeHtml(schedule.status)}</td></tr>`).join("");
+  return schedules.map((schedule) => `<tr><td>${escapeHtml(schedule.courseName)}</td><td>${escapeHtml(schedule.courseCode)}</td><td>${escapeHtml(schedule.classGroup)}</td><td>${escapeHtml(schedule.date)}</td><td>${escapeHtml(schedule.startTime)}–${escapeHtml(schedule.endTime)}</td><td>${escapeHtml(schedule.lecturerCode)}</td><td>${renderStatus(schedule.status)}</td></tr>`).join("");
 }
 
 function renderCourseRows(session, data) {
@@ -27,7 +36,16 @@ function renderCourseRows(session, data) {
 }
 
 export function renderDashboard(session, data, message = "") {
-  const attendanceRows = renderAttendanceRows(data.attendance.schedules);
+  const schedules = data.attendance.schedules ?? [];
+  const attendanceRows = renderAttendanceRows(schedules);
   const courseRows = renderCourseRows(session, data);
-  return renderPage("Dashboard", `${renderNavigation(session.csrf)}<section><h1>Jadwal presensi hari ini</h1>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${attendanceRows || "<tr><td colspan=7>Presensi belum tersedia.</td></tr>"}</tbody></table></div></section><section><h1>Jadwal mata kuliah semester ini</h1><p>Skip muncul untuk jadwal yang berlangsung hari ini menurut waktu WIB, meskipun admin belum membuka presensi.</p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>SKS</th><th>Hari</th><th>Sesi</th><th>Ruang</th><th>Aksi</th></tr></thead><tbody>${courseRows || "<tr><td colspan=8>Data tidak tersedia.</td></tr>"}</tbody></table></div></section>`);
+  const courses = data.courseSchedule?.schedules ?? [];
+  const available = schedules.filter((schedule) => schedule.status === "available");
+  const attended = schedules.filter((schedule) => schedule.status === "attended");
+  const skipped = data.attendance.skippedKeys?.length ?? 0;
+  const focus = available[0] ?? schedules[0];
+  const focusTitle = focus ? focus.courseName : "Belum ada presensi";
+  const focusDetail = focus ? `${focus.startTime}–${focus.endTime} · ${focus.classGroup}` : "SiAdin belum mengirim jadwal presensi untuk hari ini.";
+  const notice = skipped ? `${skipped} jadwal dilewati hari ini` : "Skip tersedia pada slot kuliah hari ini";
+  return renderPage("Dashboard", `${renderNavigation(session.csrf)}<div class="bento-heading"><div><h1>Presensi hari ini</h1><p>Ringkasan kehadiran dan jadwal aktif dari SiAdin.</p></div></div>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<div class="bento"><article class="bento-card bento-focus"><span class="bento-card__label">Jadwal prioritas</span><div><h2>${escapeHtml(focusTitle)}</h2><p class="bento-card__detail">${escapeHtml(focusDetail)}</p></div>${renderStatus(focus?.status ?? data.attendance.state ?? "unavailable")}</article><article class="bento-card bento-active"><span class="bento-card__label">Siap presensi</span><strong class="bento-card__value">${available.length}</strong><p class="bento-card__detail">kelas dapat diproses sekarang</p></article><article class="bento-card bento-courses"><span class="bento-card__label">Semester ini</span><strong class="bento-card__value">${courses.length}</strong><p class="bento-card__detail">mata kuliah terdaftar</p></article><article class="bento-card bento-notice"><span class="bento-card__label">Pengingat</span><h2>${escapeHtml(notice)}</h2><p class="bento-card__detail">${attended.length ? `${attended.length} presensi tercatat hari ini.` : "Periksa kembali saat jadwal dibuka admin."}</p></article></div><section class="dashboard-section"><h2>Jadwal presensi hari ini</h2><p class="dashboard-section__copy">Status ditentukan langsung oleh SiAdin saat halaman dimuat.</p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>Tanggal</th><th>Waktu</th><th>Dosen</th><th>Status</th></tr></thead><tbody>${attendanceRows || "<tr><td class=empty-state colspan=7>Belum ada presensi yang tersedia hari ini.</td></tr>"}</tbody></table></div></section><section class="dashboard-section"><h2>Jadwal mata kuliah semester ini</h2><p class="dashboard-section__copy">Skip muncul untuk jadwal yang berlangsung hari ini menurut waktu WIB, meskipun admin belum membuka presensi.</p><div class="table"><table><thead><tr><th>Mata kuliah</th><th>Kode</th><th>Kelas</th><th>SKS</th><th>Hari</th><th>Sesi</th><th>Ruang</th><th>Aksi</th></tr></thead><tbody>${courseRows || "<tr><td class=empty-state colspan=8>Data jadwal semester belum tersedia.</td></tr>"}</tbody></table></div></section>`);
 }

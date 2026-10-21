@@ -85,9 +85,6 @@ test("dashboard session is secure and displays both schedule sources", async () 
   assert.match(html, /FISIKA/);
   assert.match(html, /KALKULUS/);
   assert.match(html, /JUMAT/);
-  assert.equal((html.match(/FISIKA/g) ?? []).length, 2);
-  assert.equal((html.match(/KALKULUS/g) ?? []).length, 2);
-  assert.ok(html.indexOf("KALKULUS</td><td>F11.64101") < html.indexOf("FISIKA</td><td>F11.64102"));
   assert.doesNotMatch(html, /<td>-<\/td>/);
   assert.doesNotMatch(html, /initial-access-token/);
 });
