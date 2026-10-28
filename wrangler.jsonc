@@ -1,0 +1,10 @@
+{
+  "name": "siadinz",
+  "compatibility_date": "2026-10-28",
+  "exports": {
+    "AppStorage": {
+      "type": "durable-object",
+      "state": "deleted"
+    }
+  }
+}
