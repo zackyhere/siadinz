@@ -1,11 +1,1170 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
 <Layout>
-	<Welcome />
+	<div class="container" data-theme="dark">
+		<!-- Sidebar -->
+		<div class="sidebar" id="sidebar">
+			<div class="sidebar-header">
+				<h2 class="sidebar-title">Siadinz</h2>
+				<button class="close-sidebar" id="closeSidebar">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"/>
+						<line x1="6" y1="6" x2="18" y2="18"/>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Theme Toggle -->
+			<div class="theme-toggle-section">
+				<button class="theme-toggle" id="themeToggle">
+					<span class="toggle-option" data-theme="light">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="5"/>
+							<line x1="12" y1="1" x2="12" y2="3"/>
+							<line x1="12" y1="21" x2="12" y2="23"/>
+							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+							<line x1="1" y1="12" x2="3" y2="12"/>
+							<line x1="21" y1="12" x2="23" y2="12"/>
+							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+						</svg>
+					</span>
+					<span class="toggle-option active" data-theme="dark">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+						</svg>
+					</span>
+				</button>
+			</div>
+
+			<!-- Menu Items -->
+			<nav class="sidebar-nav">
+				<a href="#" class="nav-item active">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="3" width="7" height="7"/>
+						<rect x="14" y="3" width="7" height="7"/>
+						<rect x="14" y="14" width="7" height="7"/>
+						<rect x="3" y="14" width="7" height="7"/>
+					</svg>
+					<span>Dashboard</span>
+				</a>
+				<a href="#" class="nav-item">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+						<path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+					</svg>
+					<span>Notification</span>
+				</a>
+				<a href="#" class="nav-item">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="3"/>
+						<path d="M12 1v6m0 6v6"/>
+						<path d="M17 7l-5 5m0 0l-5-5m5 5l5 5m-5-5l-5 5"/>
+					</svg>
+					<span>Settings</span>
+				</a>
+				<a href="#" class="nav-item">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="16 18 22 12 16 6"/>
+						<polyline points="8 6 2 12 8 18"/>
+					</svg>
+					<span>API</span>
+				</a>
+			</nav>
+		</div>
+
+		<!-- Overlay -->
+		<div class="overlay" id="overlay"></div>
+
+		<!-- Main content -->
+		<div class="main-content">
+			<!-- Top navigation -->
+			<div class="top-nav">
+				<button class="nav-btn" id="menuBtn">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="3" y1="12" x2="21" y2="12"/>
+						<line x1="3" y1="6" x2="21" y2="6"/>
+						<line x1="3" y1="18" x2="21" y2="18"/>
+					</svg>
+				</button>
+				
+				<div class="profile-dropdown-container">
+					<button class="profile-btn" id="profileBtn">
+						<div class="profile-avatar">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+							</svg>
+						</div>
+					</button>
+					<div class="profile-dropdown" id="profileDropdown">
+						<button class="dropdown-item logout-btn">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+								<polyline points="16 17 21 12 16 7"/>
+								<line x1="21" y1="12" x2="9" y2="12"/>
+							</svg>
+							<span>Logout</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Current Class Section -->
+			<div class="current-class-section">
+				<h2 class="section-label">Jadwal matkul hari ini</h2>
+				<div class="current-class-cards">
+					<div class="current-class-card">
+						<div class="class-info">
+							<h3 class="class-name">Pemrograman Web</h3>
+							<div class="class-details">
+								<span class="class-time">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<circle cx="12" cy="12" r="10"/>
+										<polyline points="12 6 12 12 16 14"/>
+									</svg>
+									08:00 - 09:40
+								</span>
+								<span class="class-room">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+										<polyline points="9 22 9 12 15 12 15 22"/>
+									</svg>
+									Lab Komputer 1
+								</span>
+							</div>
+						</div>
+						<div class="class-actions">
+							<button class="btn-primary">Absen Sekarang</button>
+							<div class="more-actions-container">
+								<button class="btn-more" id="moreActionsBtn1">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+										<circle cx="12" cy="5" r="2"/>
+										<circle cx="12" cy="12" r="2"/>
+										<circle cx="12" cy="19" r="2"/>
+									</svg>
+								</button>
+								<div class="more-dropdown" id="moreDropdown1">
+									<button class="dropdown-item">
+										<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<line x1="18" y1="6" x2="6" y2="18"/>
+											<line x1="6" y1="6" x2="18" y2="18"/>
+										</svg>
+										<span>Skip Absen</span>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="current-class-card">
+						<div class="class-info">
+							<h3 class="class-name">Basis Data</h3>
+							<div class="class-details">
+								<span class="class-time">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<circle cx="12" cy="12" r="10"/>
+										<polyline points="12 6 12 12 16 14"/>
+									</svg>
+									10:00 - 11:40
+								</span>
+								<span class="class-room">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+										<polyline points="9 22 9 12 15 12 15 22"/>
+									</svg>
+									Ruang 301
+								</span>
+							</div>
+						</div>
+						<div class="class-actions">
+							<button class="btn-primary">Absen Sekarang</button>
+							<div class="more-actions-container">
+								<button class="btn-more" id="moreActionsBtn2">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+										<circle cx="12" cy="5" r="2"/>
+										<circle cx="12" cy="12" r="2"/>
+										<circle cx="12" cy="19" r="2"/>
+									</svg>
+								</button>
+								<div class="more-dropdown" id="moreDropdown2">
+									<button class="dropdown-item">
+										<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<line x1="18" y1="6" x2="6" y2="18"/>
+											<line x1="6" y1="6" x2="18" y2="18"/>
+										</svg>
+										<span>Skip Absen</span>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Header -->
+			<div class="header">
+				<h1 class="page-title">Jadwal Kuliah</h1>
+			</div>
+
+			<!-- Timeline with schedule cards -->
+			<div class="timeline-container">
+				<!-- Senin -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle">
+							<div class="date-day">Sen</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="schedule-card">
+							<h3 class="card-title">Pemrograman Web</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">08:00 - 09:40</div>
+							<div class="card-location">Lab Komputer 1</div>
+						</div>
+						<div class="schedule-card">
+							<h3 class="card-title">Basis Data</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">10:00 - 11:40</div>
+							<div class="card-location">Ruang 301</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Selasa -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle">
+							<div class="date-day">Sel</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="schedule-card">
+							<h3 class="card-title">Algoritma</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">09:00 - 10:40</div>
+							<div class="card-location">Ruang 205</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Rabu -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle">
+							<div class="date-day">Rab</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="schedule-card">
+							<h3 class="card-title">Jaringan Komputer</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">13:00 - 14:40</div>
+							<div class="card-location">Lab Jaringan</div>
+						</div>
+						<div class="schedule-card">
+							<h3 class="card-title">Sistem Operasi</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">15:00 - 16:40</div>
+							<div class="card-location">Ruang 401</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Kamis -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle">
+							<div class="date-day">Kam</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="schedule-card">
+							<h3 class="card-title">Kecerdasan Buatan</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">10:00 - 11:40</div>
+							<div class="card-location">Lab AI</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Jumat -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle">
+							<div class="date-day">Jum</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="schedule-card">
+							<h3 class="card-title">Pemrograman Mobile</h3>
+							<div class="card-divider"></div>
+							<div class="card-time">08:00 - 09:40</div>
+							<div class="card-location">Lab Mobile</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Sabtu -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle empty">
+							<div class="date-day">Sab</div>
+						</div>
+					</div>
+					<div class="timeline-line"></div>
+					<div class="schedule-cards">
+						<div class="empty-state">Tidak ada jadwal</div>
+					</div>
+				</div>
+
+				<!-- Minggu -->
+				<div class="timeline-item">
+					<div class="timeline-date">
+						<div class="date-circle empty">
+							<div class="date-day">Min</div>
+						</div>
+					</div>
+					<div class="schedule-cards">
+						<div class="empty-state">Tidak ada jadwal</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		// Menu toggle
+		const menuBtn = document.getElementById('menuBtn');
+		const sidebar = document.getElementById('sidebar');
+		const closeSidebar = document.getElementById('closeSidebar');
+		const overlay = document.getElementById('overlay');
+
+		menuBtn?.addEventListener('click', () => {
+			sidebar?.classList.add('active');
+			overlay?.classList.add('active');
+		});
+
+		closeSidebar?.addEventListener('click', () => {
+			sidebar?.classList.remove('active');
+			overlay?.classList.remove('active');
+		});
+
+		overlay?.addEventListener('click', () => {
+			sidebar?.classList.remove('active');
+			overlay?.classList.remove('active');
+			const profileDropdown = document.getElementById('profileDropdown');
+			const moreDropdown1 = document.getElementById('moreDropdown1');
+			const moreDropdown2 = document.getElementById('moreDropdown2');
+			profileDropdown?.classList.remove('active');
+			moreDropdown1?.classList.remove('active');
+			moreDropdown2?.classList.remove('active');
+		});
+
+		// Profile dropdown toggle
+		const profileBtn = document.getElementById('profileBtn');
+		const profileDropdown = document.getElementById('profileDropdown');
+
+		profileBtn?.addEventListener('click', (e) => {
+			e.stopPropagation();
+			profileDropdown?.classList.toggle('active');
+			const moreDropdown1 = document.getElementById('moreDropdown1');
+			const moreDropdown2 = document.getElementById('moreDropdown2');
+			moreDropdown1?.classList.remove('active');
+			moreDropdown2?.classList.remove('active');
+		});
+
+		// More actions dropdown toggle
+		const moreActionsBtn1 = document.getElementById('moreActionsBtn1');
+		const moreDropdown1 = document.getElementById('moreDropdown1');
+
+		moreActionsBtn1?.addEventListener('click', (e) => {
+			e.stopPropagation();
+			moreDropdown1?.classList.toggle('active');
+			profileDropdown?.classList.remove('active');
+			const moreDropdown2 = document.getElementById('moreDropdown2');
+			moreDropdown2?.classList.remove('active');
+		});
+
+		const moreActionsBtn2 = document.getElementById('moreActionsBtn2');
+		const moreDropdown2 = document.getElementById('moreDropdown2');
+
+		moreActionsBtn2?.addEventListener('click', (e) => {
+			e.stopPropagation();
+			moreDropdown2?.classList.toggle('active');
+			profileDropdown?.classList.remove('active');
+			moreDropdown1?.classList.remove('active');
+		});
+
+		// Theme toggle
+		const themeToggle = document.getElementById('themeToggle');
+		const container = document.querySelector('.container');
+
+		themeToggle?.addEventListener('click', () => {
+			const currentTheme = container?.getAttribute('data-theme');
+			const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+			container?.setAttribute('data-theme', newTheme);
+			
+			// Update toggle button
+			const options = themeToggle.querySelectorAll('.toggle-option');
+			options.forEach(opt => {
+				if (opt.getAttribute('data-theme') === newTheme) {
+					opt.classList.add('active');
+				} else {
+					opt.classList.remove('active');
+				}
+			});
+		});
+
+		// Close dropdown when clicking outside
+		document.addEventListener('click', (e) => {
+			const target = e.target as Node;
+			if (!profileBtn?.contains(target)) {
+				profileDropdown?.classList.remove('active');
+			}
+			if (!moreActionsBtn1?.contains(target)) {
+				moreDropdown1?.classList.remove('active');
+			}
+			if (!moreActionsBtn2?.contains(target)) {
+				moreDropdown2?.classList.remove('active');
+			}
+		});
+	</script>
 </Layout>
+
+<style>
+	.container {
+		min-height: 100vh;
+		background: #f5f7fa;
+		transition: background 0.3s;
+	}
+
+	.container[data-theme="dark"] {
+		background: #0f172a;
+	}
+
+	.container[data-theme="light"] {
+		background: #f5f7fa;
+	}
+
+	/* Sidebar */
+	.sidebar {
+		position: fixed;
+		top: 0;
+		left: -280px;
+		width: 280px;
+		height: 100vh;
+		background: white;
+		box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+		z-index: 1000;
+		transition: left 0.3s;
+		overflow-y: auto;
+	}
+
+	.container[data-theme="dark"] .sidebar {
+		background: #1e293b;
+	}
+
+	.sidebar.active {
+		left: 0;
+	}
+
+	.sidebar-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20px;
+		border-bottom: 1px solid #e2e8f0;
+	}
+
+	.container[data-theme="dark"] .sidebar-header {
+		border-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.sidebar-title {
+		font-size: 20px;
+		font-weight: 700;
+		color: #1e293b;
+		margin: 0;
+	}
+
+	.container[data-theme="dark"] .sidebar-title {
+		color: #f1f5f9;
+	}
+
+	.close-sidebar {
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
+		border: none;
+		background: #f8fafc;
+		color: #64748b;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.container[data-theme="dark"] .close-sidebar {
+		background: rgba(255, 255, 255, 0.08);
+		color: #cbd5e1;
+	}
+
+	.close-sidebar:hover {
+		background: #e2e8f0;
+		color: #475569;
+	}
+
+	.container[data-theme="dark"] .close-sidebar:hover {
+		background: rgba(255, 255, 255, 0.12);
+		color: #f1f5f9;
+	}
+
+	.close-sidebar:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
+	/* Theme Toggle */
+	.theme-toggle-section {
+		padding: 20px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: 1px solid #e2e8f0;
+	}
+
+	.container[data-theme="dark"] .theme-toggle-section {
+		border-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.toggle-label {
+		font-size: 14px;
+		font-weight: 600;
+		color: #475569;
+	}
+
+	.container[data-theme="dark"] .toggle-label {
+		color: #cbd5e1;
+	}
+
+	.theme-toggle {
+		display: flex;
+		gap: 8px;
+		padding: 4px;
+		background: #f1f5f9;
+		border-radius: 12px;
+		border: none;
+		cursor: pointer;
+	}
+
+	.container[data-theme="dark"] .theme-toggle {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.toggle-option {
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #94a3b8;
+		transition: all 0.2s;
+	}
+
+	.toggle-option.active {
+		background: white;
+		color: #8b5cf6;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+	}
+
+	.container[data-theme="dark"] .toggle-option.active {
+		background: #334155;
+		color: #c4b5fd;
+	}
+
+	/* Sidebar Nav */
+	.sidebar-nav {
+		padding: 12px;
+	}
+
+	.nav-item {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 14px 16px;
+		border-radius: 12px;
+		color: #64748b;
+		text-decoration: none;
+		font-size: 15px;
+		font-weight: 500;
+		transition: all 0.2s;
+		margin-bottom: 4px;
+	}
+
+	.container[data-theme="dark"] .nav-item {
+		color: #94a3b8;
+	}
+
+	.nav-item:hover {
+		background: #f8fafc;
+		color: #475569;
+	}
+
+	.container[data-theme="dark"] .nav-item:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: #cbd5e1;
+	}
+
+	.nav-item.active {
+		background: #8b5cf6;
+		color: white;
+	}
+
+	.nav-item:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
+	/* Overlay */
+	.overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.4);
+		z-index: 999;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.3s;
+	}
+
+	.overlay.active {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	/* Main content */
+	.main-content {
+		padding: 20px;
+		transition: transform 0.3s;
+	}
+
+	/* Top navigation */
+	.top-nav {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24px;
+	}
+
+	.nav-btn {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		border: none;
+		background: white;
+		color: #64748b;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	}
+
+	.container[data-theme="dark"] .nav-btn {
+		background: #1e293b;
+		color: #cbd5e1;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	}
+
+	.nav-btn:hover {
+		transform: scale(1.05);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.container[data-theme="dark"] .nav-btn:hover {
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	.nav-btn:active {
+		transform: scale(0.95);
+	}
+
+	.nav-btn:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
+	/* Profile dropdown */
+	.profile-dropdown-container {
+		position: relative;
+	}
+
+	.profile-btn {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		border: none;
+		background: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+		padding: 0;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	}
+
+	.container[data-theme="dark"] .profile-btn {
+		background: #1e293b;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	}
+
+	.profile-avatar {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+		border-radius: 50%;
+		color: white;
+	}
+
+	.profile-btn:hover {
+		transform: scale(1.05);
+		box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+	}
+
+	.profile-btn:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
+	.profile-dropdown {
+		position: absolute;
+		top: 56px;
+		right: 0;
+		background: white;
+		border-radius: 12px;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+		min-width: 160px;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(-8px);
+		transition: all 0.2s;
+		z-index: 100;
+	}
+
+	.container[data-theme="dark"] .profile-dropdown {
+		background: #1e293b;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+	}
+
+	.profile-dropdown.active {
+		opacity: 1;
+		pointer-events: auto;
+		transform: translateY(0);
+	}
+
+	.dropdown-item {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 16px;
+		border: none;
+		background: none;
+		color: #ef4444;
+		font-size: 14px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.2s;
+		border-radius: 12px;
+	}
+
+	.dropdown-item:hover {
+		background: #fef2f2;
+	}
+
+	.container[data-theme="dark"] .dropdown-item:hover {
+		background: rgba(239, 68, 68, 0.1);
+	}
+
+	.dropdown-item:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: -2px;
+	}
+
+	/* Current Class Section */
+	.current-class-section {
+		margin-bottom: 32px;
+	}
+
+	.section-label {
+		font-size: 12px;
+		font-weight: 600;
+		color: #94a3b8;
+		margin-bottom: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.8px;
+	}
+
+	.container[data-theme="dark"] .section-label {
+		color: #64748b;
+	}
+
+	.current-class-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.current-class-card {
+		background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+		border-radius: 16px;
+		padding: 20px;
+		box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+
+	.class-info {
+		flex: 1;
+		min-width: 200px;
+	}
+
+	.class-name {
+		font-size: 18px;
+		font-weight: 700;
+		color: white;
+		margin: 0 0 12px 0;
+	}
+
+	.class-details {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.class-time,
+	.class-room {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: rgba(255, 255, 255, 0.95);
+	}
+
+	.class-actions {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+	}
+
+	.btn-primary {
+		padding: 12px 20px;
+		border-radius: 12px;
+		border: none;
+		background: white;
+		color: #8b5cf6;
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+		white-space: nowrap;
+	}
+
+	.btn-primary:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.btn-primary:active {
+		transform: translateY(0);
+	}
+
+	.btn-primary:focus-visible {
+		outline: 2px solid white;
+		outline-offset: 2px;
+	}
+
+	.more-actions-container {
+		position: relative;
+	}
+
+	.btn-more {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		border: none;
+		background: rgba(255, 255, 255, 0.15);
+		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-more:hover {
+		background: rgba(255, 255, 255, 0.25);
+	}
+
+	.btn-more:focus-visible {
+		outline: 2px solid white;
+		outline-offset: 2px;
+	}
+
+	.more-dropdown {
+		position: absolute;
+		top: 48px;
+		right: 0;
+		background: white;
+		border-radius: 12px;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+		min-width: 160px;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(-8px);
+		transition: all 0.2s;
+		z-index: 100;
+	}
+
+	.container[data-theme="dark"] .more-dropdown {
+		background: #1e293b;
+	}
+
+	.more-dropdown.active {
+		opacity: 1;
+		pointer-events: auto;
+		transform: translateY(0);
+	}
+
+	.more-dropdown .dropdown-item {
+		color: #ef4444;
+	}
+
+	/* Header */
+	.header {
+		margin-bottom: 24px;
+	}
+
+	.page-title {
+		font-size: 28px;
+		font-weight: 700;
+		color: #1e293b;
+		margin: 0;
+		line-height: 1.2;
+	}
+
+	.container[data-theme="dark"] .page-title {
+		color: #f1f5f9;
+	}
+
+	/* Timeline container */
+	.timeline-container {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.timeline-item {
+		display: flex;
+		gap: 16px;
+		position: relative;
+	}
+
+	.timeline-date {
+		flex: 0 0 auto;
+		z-index: 2;
+	}
+
+	.date-circle {
+		width: 56px;
+		height: 56px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+	}
+
+	.date-circle.empty {
+		background: #cbd5e0;
+		box-shadow: none;
+	}
+
+	.container[data-theme="dark"] .date-circle.empty {
+		background: #334155;
+	}
+
+	.date-day {
+		font-size: 13px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+	}
+
+	.timeline-line {
+		position: absolute;
+		left: 28px;
+		top: 56px;
+		width: 2px;
+		height: calc(100% - 32px);
+		background: linear-gradient(180deg, #10b981 0%, #14b8a6 100%);
+		z-index: 1;
+	}
+
+	.timeline-item:last-child .timeline-line {
+		display: none;
+	}
+
+	.schedule-cards {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding-bottom: 24px;
+	}
+
+	.schedule-card {
+		background: white;
+		border-radius: 14px;
+		padding: 16px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+		transition: all 0.2s;
+		cursor: pointer;
+	}
+
+	.container[data-theme="dark"] .schedule-card {
+		background: #1e293b;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	}
+
+	.schedule-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+	}
+
+	.container[data-theme="dark"] .schedule-card:hover {
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+	}
+
+	.card-title {
+		font-size: 15px;
+		font-weight: 600;
+		color: #1e293b;
+		margin: 0 0 10px 0;
+	}
+
+	.container[data-theme="dark"] .card-title {
+		color: #f1f5f9;
+	}
+
+	.card-divider {
+		height: 1px;
+		background: #e2e8f0;
+		margin-bottom: 10px;
+	}
+
+	.container[data-theme="dark"] .card-divider {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.card-time {
+		font-size: 20px;
+		font-weight: 700;
+		color: #475569;
+		margin-bottom: 6px;
+	}
+
+	.container[data-theme="dark"] .card-time {
+		color: #cbd5e1;
+	}
+
+	.card-location {
+		font-size: 13px;
+		color: #94a3b8;
+	}
+
+	.container[data-theme="dark"] .card-location {
+		color: #64748b;
+	}
+
+	.empty-state {
+		padding: 20px;
+		text-align: center;
+		color: #94a3b8;
+		font-size: 14px;
+		font-style: italic;
+	}
+
+	.container[data-theme="dark"] .empty-state {
+		color: #64748b;
+	}
+
+	@media (max-width: 768px) {
+		.main-content {
+			padding: 16px;
+		}
+
+		.page-title {
+			font-size: 24px;
+		}
+
+		.current-class-card {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+
+		.class-actions {
+			width: 100%;
+			justify-content: space-between;
+		}
+
+		.btn-primary {
+			flex: 1;
+		}
+
+		.date-circle {
+			width: 48px;
+			height: 48px;
+		}
+
+		.date-day {
+			font-size: 12px;
+		}
+
+		.timeline-line {
+			left: 24px;
+			top: 48px;
+		}
+
+		.card-time {
+			font-size: 18px;
+		}
+
+		.card-title {
+			font-size: 14px;
+		}
+	}
+</style>
