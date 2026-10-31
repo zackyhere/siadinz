@@ -13,7 +13,11 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.4.3",
     "@lucide/astro": "^1.65.0",
     "astro": "^7.4.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261031.1"
   }
 }

@@ -20,6 +20,16 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+
+# Test files
+test-*.html
+
+# Local documentation (keep README.md but ignore personal notes)
+D1_SETUP.md
 # jetbrains setting folder
 .idea/
 

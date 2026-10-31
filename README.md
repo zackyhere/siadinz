@@ -1,36 +1,94 @@
-# Astro Starter Kit: Basics
+# Siadinz
 
-```sh
-npm create astro@latest -- --template basics
+Astro project dengan Cloudflare D1 database.
+
+## Prerequisites
+
+- Node.js >= 22.23.4
+- Cloudflare account
+- Wrangler CLI
+
+## Getting Started
+
+### 1. Install Dependencies
+
+```bash
+npm install
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+### 2. Setup Cloudflare D1
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+Login ke Cloudflare:
+```bash
+npx wrangler login
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+Buat D1 database:
+```bash
+npx wrangler d1 create siadinz-db
+```
 
-## 🧞 Commands
+Copy `database_id` dari output, lalu update di `wrangler.jsonc`:
+```jsonc
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "siadinz-db",
+    "database_id": "YOUR_DATABASE_ID_HERE"
+  }
+]
+```
 
-All commands are run from the root of the project, from a terminal:
+### 3. Run Migrations
+
+Development (local):
+```bash
+npx wrangler d1 execute siadinz-db --local --file=./migrations/0001_create_users.sql
+```
+
+Production:
+```bash
+npx wrangler d1 execute siadinz-db --remote --file=./migrations/0001_create_users.sql
+```
+
+### 4. Development Server
+
+```bash
+npm run dev
+```
+
+Server akan berjalan di `http://localhost:4321`
+
+## Using D1 Database
+
+### In API Routes
+
+```typescript
+import type { APIRoute } from 'astro';
+
+export const GET: APIRoute = async ({ locals }) => {
+  const db = locals.runtime.env.DB;
+  const result = await db.prepare('SELECT * FROM users').all();
+  return new Response(JSON.stringify(result.results));
+};
+```
+
+### In Astro Pages
+
+```astro
+---
+const db = Astro.locals.runtime.env.DB;
+const users = await db.prepare('SELECT * FROM users').all();
+---
+
+<ul>
+  {users.results.map(user => (
+    <li>{user.name} - {user.email}</li>
+  ))}
+</ul>
+```
+
+## Commands
 
 | Command                   | Action                                           |
 | :------------------------ | :----------------------------------------------- |
@@ -38,9 +96,39 @@ All commands are run from the root of the project, from a terminal:
 | `npm run dev`             | Starts local dev server at `localhost:4321`      |
 | `npm run build`           | Build your production site to `./dist/`          |
 | `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+| `npm run deploy`          | Deploy to Cloudflare Pages                       |
 
-## 👀 Want to learn more?
+## Project Structure
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```text
+/
+├── migrations/          # D1 database migrations
+├── public/             # Static assets
+├── src/
+│   ├── assets/         # Images, fonts, etc
+│   ├── components/     # Reusable Astro components
+│   ├── layouts/        # Page layouts
+│   ├── pages/          # File-based routing
+│   │   └── api/        # API endpoints
+│   └── env.d.ts        # TypeScript environment types
+├── astro.config.mjs    # Astro configuration
+└── wrangler.jsonc      # Cloudflare Wrangler config
+```
+
+## Deployment
+
+```bash
+npm run deploy
+```
+
+This will build the project and deploy to Cloudflare Pages. D1 database akan automatic terbind sesuai konfigurasi di `wrangler.jsonc`.
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## Learn More
+
+- [Astro Documentation](https://docs.astro.build)
+- [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)
+- [Cloudflare Pages Documentation](https://developers.cloudflare.com/pages/)

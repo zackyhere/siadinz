@@ -1,16 +1,23 @@
 {
-  "name": "siadinz",
-  "compatibility_date": "2026-10-28",
-  "build": {
-    "command": "npm run build"
-  },
-  "assets": {
-    "directory": "./dist"
-  },
-  "exports": {
-    "AppStorage": {
-      "type": "durable-object",
-      "state": "deleted"
-    }
-  }
+	"name": "siadinz",
+	"compatibility_date": "2026-10-28",
+	"build": {
+		"command": "npm run build"
+	},
+	"assets": {
+		"directory": "./dist"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "siadinz-db",
+			"database_id": "YOUR_DATABASE_ID"
+		},
+		{
+			"binding": "siadinz",
+			"database_name": "siadinz",
+			"database_id": "baa0db04-f483-4dbe-841f-baa605d67ff0",
+			"remote": true
+		}
+	]
 }
