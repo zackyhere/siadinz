@@ -1,0 +1,102 @@
+---
+import { LogIn } from '@lucide/astro';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<div class="container">
+		<script is:inline>
+			try {
+				const savedTheme = localStorage.getItem('siadinz-theme');
+				const theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				document.currentScript.parentElement.setAttribute('data-theme', theme);
+			} catch {
+				document.currentScript.parentElement.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+			}
+		</script>
+
+		<main class="auth-container">
+			<div class="auth-card">
+				<div class="auth-header">
+					<div class="auth-icon"><LogIn size={32} /></div>
+					<h1>Login</h1>
+					<p>Masuk ke akun Siadinz Anda</p>
+				</div>
+
+				<form id="loginForm" novalidate>
+					<div class="form-group">
+						<label for="email">Email</label>
+						<input type="email" id="email" required autocomplete="email" placeholder="nama@example.com" />
+						<p class="field-error" id="emailError" role="alert"></p>
+					</div>
+
+					<div class="form-group">
+						<label for="password">Password</label>
+						<input type="password" id="password" required autocomplete="current-password" placeholder="Masukkan password" />
+						<p class="field-error" id="passwordError" role="alert"></p>
+					</div>
+
+					<button type="submit" class="btn-primary">Masuk</button>
+				</form>
+
+				<p class="auth-footer">
+					Belum punya akun? <a href="/register">Daftar sekarang</a>
+				</p>
+			</div>
+		</main>
+	</div>
+
+	<script>
+		const container = document.querySelector<HTMLElement>('.container');
+		const loginForm = document.getElementById('loginForm') as HTMLFormElement;
+
+		const showError = (elementId: string, message: string) => {
+			const errorEl = document.getElementById(elementId);
+			if (errorEl) errorEl.textContent = message;
+		};
+
+		const clearErrors = () => {
+			document.querySelectorAll('.field-error').forEach(el => { el.textContent = ''; });
+		};
+
+		loginForm?.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			clearErrors();
+
+			const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+			const password = (document.getElementById('password') as HTMLInputElement).value;
+
+			let hasError = false;
+
+			if (!email) {
+				showError('emailError', 'Email wajib diisi.');
+				hasError = true;
+			} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+				showError('emailError', 'Format email tidak valid.');
+				hasError = true;
+			}
+
+			if (!password) {
+				showError('passwordError', 'Password wajib diisi.');
+				hasError = true;
+			}
+
+			if (hasError) return;
+
+			// TODO: Implement actual login API call
+			console.log('Login:', { email, password });
+			// window.location.href = '/';
+		});
+	</script>
+</Layout>
+
+<style>
+	.container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fa; color: #27272a; padding: 20px; } .container[data-theme="dark"] { background: #0f172a; color: #f1f5f9; }
+	.auth-container { width: 100%; max-width: 440px; }
+	.auth-card { padding: 40px; border: 1px solid #e4e4e7; border-radius: 20px; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.08); } .container[data-theme="dark"] .auth-card { background: #1e293b; border-color: #334155; box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+	.auth-header { text-align: center; margin-bottom: 32px; } .auth-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; margin-bottom: 20px; border-radius: 16px; background: #27272a; color: #fff; } .container[data-theme="dark"] .auth-icon { background: #f4f4f5; color: #18181b; } .auth-header h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; } .auth-header p { margin: 0; color: #64748b; font-size: 15px; } .container[data-theme="dark"] .auth-header p { color: #94a3b8; }
+	.form-group { margin-bottom: 20px; } .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; } .container[data-theme="dark"] .form-group label { color: #f1f5f9; } .form-group input { width: 100%; padding: 12px 16px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fafafa; color: #27272a; font: inherit; font-size: 15px; } .form-group input::placeholder { color: #a1a1aa; } .form-group input:focus { outline: 2px solid #27272a; outline-offset: 2px; border-color: #27272a; } .container[data-theme="dark"] .form-group input { border-color: #475569; background: #0f172a; color: #f1f5f9; } .container[data-theme="dark"] .form-group input:focus { outline-color: #f4f4f5; border-color: #f4f4f5; } .field-error { min-height: 20px; margin: 6px 0 0; color: #dc2626; font-size: 13px; }
+	.btn-primary { width: 100%; padding: 14px; border: 0; border-radius: 10px; background: #27272a; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; transition: .2s; } .btn-primary:hover { background: #18181b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); } .btn-primary:active { transform: translateY(0); } .container[data-theme="dark"] .btn-primary { background: #f4f4f5; color: #18181b; } .container[data-theme="dark"] .btn-primary:hover { background: #e4e4e7; }
+	.auth-footer { margin-top: 24px; text-align: center; color: #64748b; font-size: 14px; } .auth-footer a { color: #27272a; font-weight: 600; text-decoration: none; } .auth-footer a:hover { text-decoration: underline; } .container[data-theme="dark"] .auth-footer { color: #94a3b8; } .container[data-theme="dark"] .auth-footer a { color: #f1f5f9; }
+	@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms!important; animation-iteration-count: 1!important; transition-duration: .01ms!important; } }
+</style>
