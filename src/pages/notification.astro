@@ -42,18 +42,18 @@ import Layout from '../layouts/Layout.astro';
 					<div class="card-heading"><span class="card-icon"><Bell size={20} /></span><div><h2 id="push-title">Push Notification</h2><p>Notifikasi langsung pada perangkat untuk aktivitas absensi.</p></div></div>
 					<div class="settings-list">
 						<label class="setting-row"><span><strong>Aktifkan</strong><small>Izinkan notifikasi push dari Siadinz.</small></span><input id="pushEnabled" type="checkbox" role="switch" /></label>
-						<label class="setting-row"><span><strong>Jadwal absen hari ini</strong><small>Ingatkan sebelum jadwal kuliah dimulai.</small></span><input id="pushSchedule" type="checkbox" role="switch" /></label>
-						<label class="setting-row"><span><strong>Sudah absen</strong><small>Konfirmasi setelah absensi berhasil dicatat.</small></span><input id="pushAttended" type="checkbox" role="switch" /></label>
+						<label class="setting-row"><span><strong>Jadwal absen hari ini</strong><small>Ingatkan jika ada jadwal kuliah hari ini.</small></span><input id="pushSchedule" type="checkbox" role="switch" /></label>
+						<label class="setting-row"><span><strong>Push presensi</strong><small>Kirim notifikasi jika berhasil absensi.</small></span><input id="pushAttended" type="checkbox" role="switch" /></label>
 					</div>
 				</section>
 
 				<section class="settings-card reveal-on-scroll" aria-labelledby="discord-title">
 					<div class="card-heading"><span class="card-icon"><Send size={20} /></span><div><h2 id="discord-title">Discord Webhook</h2><p>Kirim pengingat absensi ke channel Discord pilihan Anda.</p></div></div>
-					<div class="webhook-field"><label for="discordWebhook">Link webhook Discord</label><input id="discordWebhook" type="url" inputmode="url" autocomplete="url" placeholder="https://discord.com/api/webhooks/..." aria-describedby="webhookHint webhookError" /><small id="webhookHint">Webhook disimpan hanya di browser ini.</small><p id="webhookError" class="field-error" role="alert"></p></div>
+					<div class="webhook-field"><label for="discordWebhook">Link webhook Discord</label><input id="discordWebhook" type="url" inputmode="url" autocomplete="url" placeholder="https://discord.com/api/webhooks/..." aria-describedby="webhookHint webhookError" /><p id="webhookError" class="field-error" role="alert"></p></div>
 					<div class="settings-list">
-						<label class="setting-row"><span><strong>Aktif</strong><small>Gunakan webhook Discord untuk mengirim notifikasi.</small></span><input id="discordEnabled" type="checkbox" role="switch" /></label>
-						<label class="setting-row"><span><strong>Jadwal absen hari ini</strong><small>Kirim pengingat jadwal ke Discord.</small></span><input id="discordSchedule" type="checkbox" role="switch" /></label>
-						<label class="setting-row"><span><strong>Absen otomatis</strong><small>Kirim status saat absensi otomatis diproses.</small></span><input id="discordAutomatic" type="checkbox" role="switch" /></label>
+						<label class="setting-row"><span><strong>Aktifkan</strong><small>Gunakan webhook Discord untuk mengirim notifikasi.</small></span><input id="discordEnabled" type="checkbox" role="switch" /></label>
+						<label class="setting-row"><span><strong>Jadwal absen hari ini</strong><small>Ingatkan jika ada jadwal kuliah hari ini.</small></span><input id="discordSchedule" type="checkbox" role="switch" /></label>
+						<label class="setting-row"><span><strong>Push presensi</strong><small>Kirim notifikasi jika berhasil absensi.</small></span><input id="discordAutomatic" type="checkbox" role="switch" /></label>
 					</div>
 				</section>
 				<div class="save-status"><p id="saveStatus" role="status"></p></div>
