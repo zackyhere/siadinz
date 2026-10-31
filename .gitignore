@@ -29,3 +29,6 @@ AGENTS.md
 .agents/
 skills-lock.json
 .vscode/
+
+# generated UI audits
+anti-slop/

@@ -1,76 +1,50 @@
 ---
+import { Bell, Clock3, CodeXml, EllipsisVertical, House, LogOut, Menu, Moon, Settings, Sun, UserRound, X } from '@lucide/astro';
 import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout>
-	<div class="container" data-theme="dark">
+	<div class="container">
+		<script is:inline>
+			try {
+				const savedTheme = localStorage.getItem('siadinz-theme');
+				const theme = savedTheme === 'light' || savedTheme === 'dark'
+					? savedTheme
+					: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				document.currentScript.parentElement.setAttribute('data-theme', theme);
+			} catch {
+				document.currentScript.parentElement.setAttribute(
+					'data-theme',
+					window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+				);
+			}
+		</script>
 		<!-- Sidebar -->
 		<div class="sidebar" id="sidebar">
 			<div class="sidebar-header">
 				<h2 class="sidebar-title">Siadinz</h2>
-				<button class="close-sidebar" id="closeSidebar">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="18" y1="6" x2="6" y2="18"/>
-						<line x1="6" y1="6" x2="18" y2="18"/>
-					</svg>
+				<button class="close-sidebar" id="closeSidebar" aria-label="Tutup menu">
+					<X size={24} aria-hidden="true" />
 				</button>
 			</div>
 
-			<!-- Theme Toggle -->
-			<div class="theme-toggle-section">
-				<button class="theme-toggle" id="themeToggle">
-					<span class="toggle-option" data-theme="light">
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="5"/>
-							<line x1="12" y1="1" x2="12" y2="3"/>
-							<line x1="12" y1="21" x2="12" y2="23"/>
-							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-							<line x1="1" y1="12" x2="3" y2="12"/>
-							<line x1="21" y1="12" x2="23" y2="12"/>
-							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-						</svg>
-					</span>
-					<span class="toggle-option active" data-theme="dark">
-						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-						</svg>
-					</span>
-				</button>
-			</div>
 
 			<!-- Menu Items -->
 			<nav class="sidebar-nav">
 				<a href="#" class="nav-item active">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<rect x="3" y="3" width="7" height="7"/>
-						<rect x="14" y="3" width="7" height="7"/>
-						<rect x="14" y="14" width="7" height="7"/>
-						<rect x="3" y="14" width="7" height="7"/>
-					</svg>
+					<House size={20} aria-hidden="true" />
 					<span>Dashboard</span>
 				</a>
-				<a href="#" class="nav-item">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-						<path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-					</svg>
+				<a href="/notification" class="nav-item">
+					<Bell size={20} aria-hidden="true" />
 					<span>Notification</span>
 				</a>
 				<a href="#" class="nav-item">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="3"/>
-						<path d="M12 1v6m0 6v6"/>
-						<path d="M17 7l-5 5m0 0l-5-5m5 5l5 5m-5-5l-5 5"/>
-					</svg>
+					<Settings size={20} aria-hidden="true" />
 					<span>Settings</span>
 				</a>
 				<a href="#" class="nav-item">
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<polyline points="16 18 22 12 16 6"/>
-						<polyline points="8 6 2 12 8 18"/>
-					</svg>
+					<CodeXml size={20} aria-hidden="true" />
 					<span>API</span>
 				</a>
 			</nav>
@@ -83,29 +57,24 @@ import Layout from '../layouts/Layout.astro';
 		<div class="main-content">
 			<!-- Top navigation -->
 			<div class="top-nav">
-				<button class="nav-btn" id="menuBtn">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="3" y1="12" x2="21" y2="12"/>
-						<line x1="3" y1="6" x2="21" y2="6"/>
-						<line x1="3" y1="18" x2="21" y2="18"/>
-					</svg>
+				<button class="nav-btn" id="menuBtn" aria-label="Buka menu">
+					<Menu size={24} aria-hidden="true" />
 				</button>
 				
-				<div class="profile-dropdown-container">
-					<button class="profile-btn" id="profileBtn">
+				<div class="top-nav-actions">
+					<button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="true" aria-label="Gunakan tema terang">
+						<Sun class="toggle-icon toggle-icon-light" size={16} aria-hidden="true" />
+						<Moon class="toggle-icon toggle-icon-dark" size={16} aria-hidden="true" />
+						<span class="toggle-thumb" aria-hidden="true"></span>
+					</button>
+					<button class="profile-btn" id="profileBtn" aria-label="Buka menu profil">
 						<div class="profile-avatar">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-							</svg>
+							<UserRound size={20} aria-hidden="true" />
 						</div>
 					</button>
 					<div class="profile-dropdown" id="profileDropdown">
 						<button class="dropdown-item logout-btn">
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-								<polyline points="16 17 21 12 16 7"/>
-								<line x1="21" y1="12" x2="9" y2="12"/>
-							</svg>
+							<LogOut size={18} aria-hidden="true" />
 							<span>Logout</span>
 						</button>
 					</div>
@@ -113,7 +82,7 @@ import Layout from '../layouts/Layout.astro';
 			</div>
 
 			<!-- Current Class Section -->
-			<div class="current-class-section">
+			<div class="current-class-section reveal-on-scroll">
 				<h2 class="section-label">Jadwal matkul hari ini</h2>
 				<div class="current-class-cards">
 					<div class="current-class-card">
@@ -121,17 +90,11 @@ import Layout from '../layouts/Layout.astro';
 							<h3 class="class-name">Pemrograman Web</h3>
 							<div class="class-details">
 								<span class="class-time">
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-										<circle cx="12" cy="12" r="10"/>
-										<polyline points="12 6 12 12 16 14"/>
-									</svg>
+									<Clock3 size={16} aria-hidden="true" />
 									08:00 - 09:40
 								</span>
 								<span class="class-room">
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-										<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-										<polyline points="9 22 9 12 15 12 15 22"/>
-									</svg>
+									<House size={16} aria-hidden="true" />
 									Lab Komputer 1
 								</span>
 							</div>
@@ -139,19 +102,12 @@ import Layout from '../layouts/Layout.astro';
 						<div class="class-actions">
 							<button class="btn-primary">Absen Sekarang</button>
 							<div class="more-actions-container">
-								<button class="btn-more" id="moreActionsBtn1">
-									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-										<circle cx="12" cy="5" r="2"/>
-										<circle cx="12" cy="12" r="2"/>
-										<circle cx="12" cy="19" r="2"/>
-									</svg>
+								<button class="btn-more" id="moreActionsBtn1" aria-label="Tampilkan tindakan lainnya">
+									<EllipsisVertical size={20} aria-hidden="true" />
 								</button>
 								<div class="more-dropdown" id="moreDropdown1">
 									<button class="dropdown-item">
-										<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-											<line x1="18" y1="6" x2="6" y2="18"/>
-											<line x1="6" y1="6" x2="18" y2="18"/>
-										</svg>
+										<X size={18} aria-hidden="true" />
 										<span>Skip Absen</span>
 									</button>
 								</div>
@@ -164,17 +120,11 @@ import Layout from '../layouts/Layout.astro';
 							<h3 class="class-name">Basis Data</h3>
 							<div class="class-details">
 								<span class="class-time">
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-										<circle cx="12" cy="12" r="10"/>
-										<polyline points="12 6 12 12 16 14"/>
-									</svg>
+									<Clock3 size={16} aria-hidden="true" />
 									10:00 - 11:40
 								</span>
 								<span class="class-room">
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-										<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-										<polyline points="9 22 9 12 15 12 15 22"/>
-									</svg>
+									<House size={16} aria-hidden="true" />
 									Ruang 301
 								</span>
 							</div>
@@ -182,19 +132,12 @@ import Layout from '../layouts/Layout.astro';
 						<div class="class-actions">
 							<button class="btn-primary">Absen Sekarang</button>
 							<div class="more-actions-container">
-								<button class="btn-more" id="moreActionsBtn2">
-									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-										<circle cx="12" cy="5" r="2"/>
-										<circle cx="12" cy="12" r="2"/>
-										<circle cx="12" cy="19" r="2"/>
-									</svg>
+								<button class="btn-more" id="moreActionsBtn2" aria-label="Tampilkan tindakan lainnya">
+									<EllipsisVertical size={20} aria-hidden="true" />
 								</button>
 								<div class="more-dropdown" id="moreDropdown2">
 									<button class="dropdown-item">
-										<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-											<line x1="18" y1="6" x2="6" y2="18"/>
-											<line x1="6" y1="6" x2="18" y2="18"/>
-										</svg>
+										<X size={18} aria-hidden="true" />
 										<span>Skip Absen</span>
 									</button>
 								</div>
@@ -205,17 +148,17 @@ import Layout from '../layouts/Layout.astro';
 			</div>
 
 			<!-- Header -->
-			<div class="header">
+			<div class="header reveal-on-scroll">
 				<h1 class="page-title">Jadwal Kuliah</h1>
 			</div>
 
 			<!-- Timeline with schedule cards -->
 			<div class="timeline-container">
 				<!-- Senin -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle">
-							<div class="date-day">Sen</div>
+							<div class="date-day">Senin</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -236,10 +179,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Selasa -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle">
-							<div class="date-day">Sel</div>
+							<div class="date-day">Selasa</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -254,10 +197,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Rabu -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle">
-							<div class="date-day">Rab</div>
+							<div class="date-day">Rabu</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -278,10 +221,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Kamis -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle">
-							<div class="date-day">Kam</div>
+							<div class="date-day">Kamis</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -296,10 +239,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Jumat -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle">
-							<div class="date-day">Jum</div>
+							<div class="date-day">Jumat</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -314,10 +257,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Sabtu -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle empty">
-							<div class="date-day">Sab</div>
+							<div class="date-day">Sabtu</div>
 						</div>
 					</div>
 					<div class="timeline-line"></div>
@@ -327,10 +270,10 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 
 				<!-- Minggu -->
-				<div class="timeline-item">
+				<div class="timeline-item reveal-on-scroll">
 					<div class="timeline-date">
 						<div class="date-circle empty">
-							<div class="date-day">Min</div>
+							<div class="date-day">Minggu</div>
 						</div>
 					</div>
 					<div class="schedule-cards">
@@ -404,24 +347,42 @@ import Layout from '../layouts/Layout.astro';
 			moreDropdown1?.classList.remove('active');
 		});
 
-		// Theme toggle
 		const themeToggle = document.getElementById('themeToggle');
-		const container = document.querySelector('.container');
+		const container = document.querySelector<HTMLElement>('.container');
+		const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+		const getStoredTheme = () => {
+			try {
+				const savedTheme = localStorage.getItem('siadinz-theme');
+				return savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : null;
+			} catch {
+				return null;
+			}
+		};
+
+		const applyTheme = (theme: 'light' | 'dark') => {
+			container?.setAttribute('data-theme', theme);
+			themeToggle?.setAttribute('aria-checked', String(theme === 'dark'));
+			themeToggle?.setAttribute('aria-label', theme === 'dark' ? 'Gunakan tema terang' : 'Gunakan tema gelap');
+		};
+
+		applyTheme(getStoredTheme() ?? (systemTheme.matches ? 'dark' : 'light'));
 
 		themeToggle?.addEventListener('click', () => {
 			const currentTheme = container?.getAttribute('data-theme');
 			const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-			container?.setAttribute('data-theme', newTheme);
-			
-			// Update toggle button
-			const options = themeToggle.querySelectorAll('.toggle-option');
-			options.forEach(opt => {
-				if (opt.getAttribute('data-theme') === newTheme) {
-					opt.classList.add('active');
-				} else {
-					opt.classList.remove('active');
-				}
-			});
+			try {
+				localStorage.setItem('siadinz-theme', newTheme);
+			} catch {
+				// Use the selected theme for the current page when storage is unavailable.
+			}
+			applyTheme(newTheme);
+		});
+
+		systemTheme.addEventListener('change', (event) => {
+			if (!getStoredTheme()) {
+				applyTheme(event.matches ? 'dark' : 'light');
+			}
 		});
 
 		// Close dropdown when clicking outside
@@ -437,6 +398,27 @@ import Layout from '../layouts/Layout.astro';
 				moreDropdown2?.classList.remove('active');
 			}
 		});
+
+		const revealTargets = document.querySelectorAll<HTMLElement>('.reveal-on-scroll');
+		if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			document.documentElement.classList.add('has-scroll-reveal');
+			const revealObserver = new IntersectionObserver(
+				(entries, observer) => {
+					entries.forEach((entry) => {
+						if (entry.isIntersecting) {
+							entry.target.classList.add('is-visible');
+							observer.unobserve(entry.target);
+						}
+					});
+				},
+				{ threshold: 0.16, rootMargin: '0px 0px -8% 0px' },
+			);
+
+			revealTargets.forEach((target, index) => {
+				target.style.transitionDelay = `${Math.min(index * 45, 180)}ms`;
+				revealObserver.observe(target);
+			});
+		}
 	</script>
 </Layout>
 
@@ -530,67 +512,87 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.close-sidebar:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid #27272a;
 		outline-offset: 2px;
 	}
 
-	/* Theme Toggle */
-	.theme-toggle-section {
-		padding: 20px;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		border-bottom: 1px solid #e2e8f0;
-	}
-
-	.container[data-theme="dark"] .theme-toggle-section {
-		border-color: rgba(255, 255, 255, 0.08);
-	}
-
-	.toggle-label {
-		font-size: 14px;
-		font-weight: 600;
-		color: #475569;
-	}
-
-	.container[data-theme="dark"] .toggle-label {
-		color: #cbd5e1;
-	}
-
 	.theme-toggle {
-		display: flex;
-		gap: 8px;
-		padding: 4px;
-		background: #f1f5f9;
-		border-radius: 12px;
-		border: none;
+		position: relative;
+		width: 58px;
+		height: 32px;
+		padding: 0;
+		border: 1px solid #d4d4d8;
+		border-radius: 999px;
+		background: #f4f4f5;
+		color: #3f3f46;
 		cursor: pointer;
+		transition: background 0.2s, border-color 0.2s;
 	}
 
 	.container[data-theme="dark"] .theme-toggle {
-		background: rgba(255, 255, 255, 0.08);
+		border-color: #52525b;
+		background: #27272a;
+		color: #f4f4f5;
 	}
 
-	.toggle-option {
-		width: 36px;
-		height: 36px;
-		border-radius: 8px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: #94a3b8;
-		transition: all 0.2s;
+	.toggle-icon {
+		position: absolute;
+		top: 7px;
+		z-index: 1;
 	}
 
-	.toggle-option.active {
-		background: white;
-		color: #8b5cf6;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+	.toggle-icon-light {
+		left: 8px;
 	}
 
-	.container[data-theme="dark"] .toggle-option.active {
-		background: #334155;
-		color: #c4b5fd;
+	.toggle-icon-dark {
+		right: 8px;
+	}
+
+	.container[data-theme="light"] .toggle-icon-light {
+		color: #f4f4f5;
+	}
+
+	.container[data-theme="light"] .toggle-icon-dark {
+		color: #71717a;
+	}
+
+	.container[data-theme="dark"] .toggle-icon-light {
+		color: #a1a1aa;
+	}
+
+	.container[data-theme="dark"] .toggle-icon-dark {
+		color: #27272a;
+	}
+
+	.toggle-thumb {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		background: #27272a;
+		box-shadow: 0 1px 4px rgba(24, 24, 27, 0.2);
+		transform: translateX(26px);
+		transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.container[data-theme="dark"] .toggle-thumb {
+		background: #f4f4f5;
+	}
+
+	.container[data-theme="light"] .toggle-thumb {
+		transform: translateX(0);
+	}
+
+	.theme-toggle:hover {
+		border-color: #71717a;
+	}
+
+	.theme-toggle:focus-visible {
+		outline: 2px solid #27272a;
+		outline-offset: 3px;
 	}
 
 	/* Sidebar Nav */
@@ -627,12 +629,17 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.nav-item.active {
-		background: #8b5cf6;
-		color: white;
+		background: #27272a;
+		color: #ffffff;
+	}
+
+	.container[data-theme="dark"] .nav-item.active {
+		background: #f4f4f5;
+		color: #18181b;
 	}
 
 	.nav-item:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid #27272a;
 		outline-offset: 2px;
 	}
 
@@ -704,8 +711,15 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.nav-btn:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid #27272a;
 		outline-offset: 2px;
+	}
+
+	.top-nav-actions {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		position: relative;
 	}
 
 	/* Profile dropdown */
@@ -739,18 +753,23 @@ import Layout from '../layouts/Layout.astro';
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+		background: #27272a;
 		border-radius: 50%;
-		color: white;
+		color: #ffffff;
+	}
+
+	.container[data-theme="dark"] .profile-avatar {
+		background: #f4f4f5;
+		color: #18181b;
 	}
 
 	.profile-btn:hover {
 		transform: scale(1.05);
-		box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+		box-shadow: 0 4px 12px rgba(24, 24, 27, 0.2);
 	}
 
 	.profile-btn:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid #27272a;
 		outline-offset: 2px;
 	}
 
@@ -805,7 +824,7 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.dropdown-item:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid #27272a;
 		outline-offset: -2px;
 	}
 
@@ -834,15 +853,22 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.current-class-card {
-		background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+		background: #f4f4f5;
+		border: 1px solid #e4e4e7;
 		border-radius: 16px;
 		padding: 20px;
-		box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+		box-shadow: 0 2px 10px rgba(24, 24, 27, 0.06);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: 16px;
 		flex-wrap: wrap;
+	}
+
+	.container[data-theme="dark"] .current-class-card {
+		background: #1e293b;
+		border-color: #334155;
+		box-shadow: none;
 	}
 
 	.class-info {
@@ -853,8 +879,12 @@ import Layout from '../layouts/Layout.astro';
 	.class-name {
 		font-size: 18px;
 		font-weight: 700;
-		color: white;
+		color: #27272a;
 		margin: 0 0 12px 0;
+	}
+
+	.container[data-theme="dark"] .class-name {
+		color: #f1f5f9;
 	}
 
 	.class-details {
@@ -869,7 +899,12 @@ import Layout from '../layouts/Layout.astro';
 		align-items: center;
 		gap: 8px;
 		font-size: 14px;
-		color: rgba(255, 255, 255, 0.95);
+		color: #52525b;
+	}
+
+	.container[data-theme="dark"] .class-time,
+	.container[data-theme="dark"] .class-room {
+		color: #cbd5e1;
 	}
 
 	.class-actions {
@@ -882,13 +917,18 @@ import Layout from '../layouts/Layout.astro';
 		padding: 12px 20px;
 		border-radius: 12px;
 		border: none;
-		background: white;
-		color: #8b5cf6;
+		background: #27272a;
+		color: #ffffff;
 		font-size: 14px;
 		font-weight: 600;
 		cursor: pointer;
 		transition: all 0.2s;
 		white-space: nowrap;
+	}
+
+	.container[data-theme="dark"] .btn-primary {
+		background: #f4f4f5;
+		color: #18181b;
 	}
 
 	.btn-primary:hover {
@@ -901,7 +941,7 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.btn-primary:focus-visible {
-		outline: 2px solid white;
+		outline: 2px solid currentColor;
 		outline-offset: 2px;
 	}
 
@@ -913,9 +953,9 @@ import Layout from '../layouts/Layout.astro';
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
-		border: none;
-		background: rgba(255, 255, 255, 0.15);
-		color: white;
+		border: 1px solid #d4d4d8;
+		background: #e4e4e7;
+		color: #3f3f46;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -923,8 +963,18 @@ import Layout from '../layouts/Layout.astro';
 		transition: all 0.2s;
 	}
 
+	.container[data-theme="dark"] .btn-more {
+		border-color: #52525b;
+		background: #3f3f46;
+		color: #f4f4f5;
+	}
+
 	.btn-more:hover {
-		background: rgba(255, 255, 255, 0.25);
+		background: #d4d4d8;
+	}
+
+	.container[data-theme="dark"] .btn-more:hover {
+		background: #52525b;
 	}
 
 	.btn-more:focus-visible {
@@ -997,15 +1047,16 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.date-circle {
-		width: 56px;
-		height: 56px;
-		border-radius: 50%;
+		min-width: 68px;
+		height: 32px;
+		padding: 0 12px;
+		border-radius: 999px;
 		background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		color: white;
-		box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+		box-shadow: 0 3px 8px rgba(245, 158, 11, 0.22);
 	}
 
 	.date-circle.empty {
@@ -1018,16 +1069,15 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.date-day {
-		font-size: 13px;
+		font-size: 12px;
 		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.3px;
+		white-space: nowrap;
 	}
 
 	.timeline-line {
 		position: absolute;
-		left: 28px;
-		top: 56px;
+		left: 34px;
+		top: 32px;
 		width: 2px;
 		height: calc(100% - 32px);
 		background: linear-gradient(180deg, #10b981 0%, #14b8a6 100%);
@@ -1122,6 +1172,27 @@ import Layout from '../layouts/Layout.astro';
 		color: #64748b;
 	}
 
+	.has-scroll-reveal .reveal-on-scroll {
+		opacity: 0;
+		transform: translateY(18px);
+		transition: opacity 460ms ease-out, transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.has-scroll-reveal .reveal-on-scroll.is-visible {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			scroll-behavior: auto !important;
+			transition-duration: 0.01ms !important;
+		}
+	}
 	@media (max-width: 768px) {
 		.main-content {
 			padding: 16px;
@@ -1146,17 +1217,18 @@ import Layout from '../layouts/Layout.astro';
 		}
 
 		.date-circle {
-			width: 48px;
-			height: 48px;
+			min-width: 62px;
+			height: 30px;
+			padding: 0 10px;
 		}
 
 		.date-day {
-			font-size: 12px;
+			font-size: 11px;
 		}
 
 		.timeline-line {
-			left: 24px;
-			top: 48px;
+			left: 31px;
+			top: 30px;
 		}
 
 		.card-time {
