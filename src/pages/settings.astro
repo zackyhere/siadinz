@@ -1,0 +1,275 @@
+---
+import { Bell, ChevronRight, CodeXml, House, Key, Lock, LogOut, Menu, Moon, Settings, Sun, UserRound, X } from '@lucide/astro';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<div class="container">
+		<script is:inline>
+			try {
+				const savedTheme = localStorage.getItem('siadinz-theme');
+				const theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				document.currentScript.parentElement.setAttribute('data-theme', theme);
+			} catch {
+				document.currentScript.parentElement.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+			}
+		</script>
+		<aside class="sidebar" id="sidebar">
+			<div class="sidebar-header"><h2>Siadinz</h2><button id="closeSidebar" aria-label="Tutup menu"><X size={24} /></button></div>
+			<nav class="sidebar-nav">
+				<a href="/" class="nav-item"><House size={20} />Dashboard</a>
+				<a href="/notification" class="nav-item"><Bell size={20} />Notification</a>
+				<a href="/settings" class="nav-item active"><Settings size={20} />Settings</a>
+				<a href="#" class="nav-item"><CodeXml size={20} />API</a>
+			</nav>
+		</aside>
+		<div class="overlay" id="overlay"></div>
+
+		<main class="main-content">
+			<header class="top-nav">
+				<button class="nav-btn" id="menuBtn" aria-label="Buka menu"><Menu size={24} /></button>
+				<div class="top-nav-actions">
+					<button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="true" aria-label="Gunakan tema terang">
+						<Sun class="toggle-icon toggle-icon-light" size={16} /><Moon class="toggle-icon toggle-icon-dark" size={16} /><span class="toggle-thumb"></span>
+					</button>
+					<div class="profile-menu"><button class="profile-btn" id="profileBtn" aria-label="Buka menu profil"><span><UserRound size={20} /></span></button><div class="profile-dropdown" id="profileDropdown"><button><LogOut size={18} />Logout</button></div></div>
+				</div>
+			</header>
+
+			<div class="settings-container">
+				<section class="settings-card reveal-on-scroll">
+					<div class="card-heading"><span class="card-icon"><Lock size={20} /></span><div><h2>Password Login</h2><p>Ubah password untuk login ke aplikasi Siadinz.</p></div></div>
+					<button type="button" class="settings-action-btn" id="openPasswordModal">
+						<span>Ubah Password</span><ChevronRight size={20} />
+					</button>
+				</section>
+
+				<section class="settings-card reveal-on-scroll">
+					<div class="card-heading"><span class="card-icon"><Key size={20} /></span><div><h2>Akun Siadin</h2><p>Kelola kredensial akun Siadin untuk absensi otomatis.</p></div></div>
+					<button type="button" class="settings-action-btn" id="openSiadinModal">
+						<span>Ubah Akun Siadin</span><ChevronRight size={20} />
+					</button>
+				</section>
+			</div>
+		</main>
+	</div>
+
+	<!-- Modal Password Login -->
+	<div class="modal" id="passwordModal" role="dialog" aria-labelledby="passwordModalTitle" aria-modal="true">
+		<div class="modal-backdrop" id="passwordBackdrop"></div>
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3 id="passwordModalTitle">Ubah Password Login</h3>
+				<button type="button" class="modal-close" id="closePasswordModal" aria-label="Tutup"><X size={20} /></button>
+			</div>
+			<form id="passwordForm" novalidate>
+				<div class="form-group">
+					<label for="currentPassword">Password Saat Ini</label>
+					<input type="password" id="currentPassword" required autocomplete="current-password" />
+					<p class="field-error" id="currentPasswordError" role="alert"></p>
+				</div>
+				<div class="form-group">
+					<label for="newPassword">Password Baru</label>
+					<input type="password" id="newPassword" required autocomplete="new-password" />
+					<p class="field-error" id="newPasswordError" role="alert"></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn-secondary" id="cancelPassword">Batal</button>
+					<button type="submit" class="btn-primary">Simpan</button>
+				</div>
+			</form>
+			<p class="save-status" id="passwordStatus" role="status"></p>
+		</div>
+	</div>
+
+	<!-- Modal Akun Siadin -->
+	<div class="modal" id="siadinModal" role="dialog" aria-labelledby="siadinModalTitle" aria-modal="true">
+		<div class="modal-backdrop" id="siadinBackdrop"></div>
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3 id="siadinModalTitle">Ubah Akun Siadin</h3>
+				<button type="button" class="modal-close" id="closeSiadinModal" aria-label="Tutup"><X size={20} /></button>
+			</div>
+			<form id="siadinForm" novalidate>
+				<div class="form-group">
+					<label for="nim">NIM</label>
+					<input type="text" id="nim" required inputmode="numeric" pattern="[0-9]*" autocomplete="username" />
+					<p class="field-error" id="nimError" role="alert"></p>
+				</div>
+				<div class="form-group">
+					<label for="siadinPassword">Password Siadin</label>
+					<input type="password" id="siadinPassword" required autocomplete="current-password" />
+					<p class="field-error" id="siadinPasswordError" role="alert"></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn-secondary" id="cancelSiadin">Batal</button>
+					<button type="submit" class="btn-primary">Simpan</button>
+				</div>
+			</form>
+			<p class="save-status" id="siadinStatus" role="status"></p>
+		</div>
+	</div>
+
+	<script>
+		const container = document.querySelector<HTMLElement>('.container');
+		const themeToggle = document.getElementById('themeToggle');
+		const sidebar = document.getElementById('sidebar');
+		const overlay = document.getElementById('overlay');
+		const profileBtn = document.getElementById('profileBtn');
+		const profileDropdown = document.getElementById('profileDropdown');
+
+		// Theme management
+		const getTheme = () => { try { const value = localStorage.getItem('siadinz-theme'); return value === 'light' || value === 'dark' ? value : null; } catch { return null; } };
+		const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+		const applyTheme = (theme: 'light' | 'dark') => { container?.setAttribute('data-theme', theme); themeToggle?.setAttribute('aria-checked', String(theme === 'dark')); themeToggle?.setAttribute('aria-label', theme === 'dark' ? 'Gunakan tema terang' : 'Gunakan tema gelap'); };
+		applyTheme(getTheme() ?? (systemTheme.matches ? 'dark' : 'light'));
+		themeToggle?.addEventListener('click', () => { const theme = container?.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('siadinz-theme', theme); } catch {} applyTheme(theme); });
+		systemTheme.addEventListener('change', (event) => { if (!getTheme()) applyTheme(event.matches ? 'dark' : 'light'); });
+
+		// Sidebar
+		document.getElementById('menuBtn')?.addEventListener('click', () => { sidebar?.classList.add('active'); overlay?.classList.add('active'); });
+		const closeMenu = () => { sidebar?.classList.remove('active'); overlay?.classList.remove('active'); };
+		document.getElementById('closeSidebar')?.addEventListener('click', closeMenu);
+		overlay?.addEventListener('click', closeMenu);
+
+		// Profile dropdown
+		profileBtn?.addEventListener('click', () => profileDropdown?.classList.toggle('active'));
+		document.addEventListener('click', (event) => { if (!profileBtn?.contains(event.target as Node)) profileDropdown?.classList.remove('active'); });
+
+		// Modal management
+		const passwordModal = document.getElementById('passwordModal');
+		const siadinModal = document.getElementById('siadinModal');
+		const passwordForm = document.getElementById('passwordForm') as HTMLFormElement;
+		const siadinForm = document.getElementById('siadinForm') as HTMLFormElement;
+
+		const openModal = (modal: HTMLElement | null) => {
+			if (modal) {
+				modal.classList.add('active');
+				const currentTheme = container?.getAttribute('data-theme') || 'light';
+				modal.setAttribute('data-theme', currentTheme);
+			}
+			document.body.style.overflow = 'hidden';
+		};
+
+		const closeModal = (modal: HTMLElement | null) => {
+			modal?.classList.remove('active');
+			document.body.style.overflow = '';
+		};
+
+		// Password modal
+		document.getElementById('openPasswordModal')?.addEventListener('click', () => openModal(passwordModal));
+		document.getElementById('closePasswordModal')?.addEventListener('click', () => closeModal(passwordModal));
+		document.getElementById('cancelPassword')?.addEventListener('click', () => closeModal(passwordModal));
+		document.getElementById('passwordBackdrop')?.addEventListener('click', () => closeModal(passwordModal));
+
+		// Siadin modal
+		document.getElementById('openSiadinModal')?.addEventListener('click', () => openModal(siadinModal));
+		document.getElementById('closeSiadinModal')?.addEventListener('click', () => closeModal(siadinModal));
+		document.getElementById('cancelSiadin')?.addEventListener('click', () => closeModal(siadinModal));
+		document.getElementById('siadinBackdrop')?.addEventListener('click', () => closeModal(siadinModal));
+
+		// Form handling
+		const showStatus = (elementId: string, message: string, isError = false) => {
+			const statusEl = document.getElementById(elementId);
+			if (statusEl) {
+				statusEl.textContent = message;
+				statusEl.style.color = isError ? '#dc2626' : '#166534';
+			}
+		};
+
+		const clearErrors = (formId: string) => {
+			const form = document.getElementById(formId);
+			form?.querySelectorAll('.field-error').forEach(el => { el.textContent = ''; });
+		};
+
+		passwordForm?.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			clearErrors('passwordForm');
+
+			const currentPassword = (document.getElementById('currentPassword') as HTMLInputElement).value;
+			const newPassword = (document.getElementById('newPassword') as HTMLInputElement).value;
+
+			if (!currentPassword) {
+				document.getElementById('currentPasswordError')!.textContent = 'Password saat ini wajib diisi.';
+				return;
+			}
+
+			if (!newPassword) {
+				document.getElementById('newPasswordError')!.textContent = 'Password baru wajib diisi.';
+				return;
+			}
+
+			if (newPassword.length < 6) {
+				document.getElementById('newPasswordError')!.textContent = 'Password minimal 6 karakter.';
+				return;
+			}
+
+			// TODO: Implement actual API call
+			showStatus('passwordStatus', 'Password berhasil diubah!');
+			setTimeout(() => {
+				closeModal(passwordModal);
+				passwordForm.reset();
+				showStatus('passwordStatus', '');
+			}, 1500);
+		});
+
+		siadinForm?.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			clearErrors('siadinForm');
+
+			const nim = (document.getElementById('nim') as HTMLInputElement).value;
+			const siadinPassword = (document.getElementById('siadinPassword') as HTMLInputElement).value;
+
+			if (!nim) {
+				document.getElementById('nimError')!.textContent = 'NIM wajib diisi.';
+				return;
+			}
+
+			if (!/^\d+$/.test(nim)) {
+				document.getElementById('nimError')!.textContent = 'NIM harus berupa angka.';
+				return;
+			}
+
+			if (!siadinPassword) {
+				document.getElementById('siadinPasswordError')!.textContent = 'Password Siadin wajib diisi.';
+				return;
+			}
+
+			// TODO: Implement actual API call
+			showStatus('siadinStatus', 'Akun Siadin berhasil diubah!');
+			setTimeout(() => {
+				closeModal(siadinModal);
+				siadinForm.reset();
+				showStatus('siadinStatus', '');
+			}, 1500);
+		});
+
+		// Close modals on Escape key
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				closeModal(passwordModal);
+				closeModal(siadinModal);
+			}
+		});
+	</script>
+</Layout>
+
+<style>
+	.container { min-height: 100vh; background: #f5f7fa; color: #27272a; } .container[data-theme="dark"] { background: #0f172a; color: #f1f5f9; }
+	.sidebar { position: fixed; inset: 0 auto 0 -280px; width: 280px; background: #fff; z-index: 10; box-shadow: 2px 0 12px rgba(0,0,0,.08); transition: left .25s; } .container[data-theme="dark"] .sidebar { background: #1e293b; } .sidebar.active { left: 0; } .sidebar-header { display:flex; justify-content:space-between; align-items:center; padding:20px; border-bottom:1px solid #e2e8f0; } .container[data-theme="dark"] .sidebar-header { border-color:rgba(255,255,255,.08); } .sidebar-header h2 { font-size:20px; } .sidebar-header button { width:36px; height:36px; border:0; border-radius:8px; background:#f4f4f5; color:#3f3f46; cursor:pointer; } .container[data-theme="dark"] .sidebar-header button { background:#334155; color:#f1f5f9; }
+	.sidebar-nav { padding:12px; } .nav-item { display:flex; align-items:center; gap:12px; padding:14px 16px; margin-bottom:4px; border-radius:12px; color:#64748b; text-decoration:none; font-size:15px; font-weight:500; } .nav-item:hover { background:#f8fafc; } .nav-item.active { background:#27272a; color:#fff; } .container[data-theme="dark"] .nav-item { color:#94a3b8; } .container[data-theme="dark"] .nav-item:hover { background:rgba(255,255,255,.08); } .container[data-theme="dark"] .nav-item.active { background:#f4f4f5; color:#18181b; }
+	.overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9; opacity:0; pointer-events:none; transition:opacity .25s; } .overlay.active { opacity:1; pointer-events:auto; }
+	.main-content { padding:20px; max-width:960px; margin:auto; } .top-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; } .nav-btn,.profile-btn { width:48px; height:48px; display:grid; place-items:center; border:0; border-radius:50%; background:#fff; color:#64748b; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.06); } .container[data-theme="dark"] .nav-btn,.container[data-theme="dark"] .profile-btn { background:#1e293b; color:#cbd5e1; } .top-nav-actions { display:flex; gap:12px; align-items:center; position:relative; }
+	.theme-toggle { position:relative; width:58px; height:32px; padding:0; border:1px solid #d4d4d8; border-radius:999px; background:#f4f4f5; cursor:pointer; } .container[data-theme="dark"] .theme-toggle { border-color:#52525b; background:#27272a; } .toggle-icon { position:absolute; top:7px; z-index:1; } .toggle-icon-light { left:8px; } .toggle-icon-dark { right:8px; } .container[data-theme="light"] .toggle-icon-light { color:#f4f4f5; } .container[data-theme="light"] .toggle-icon-dark { color:#71717a; } .container[data-theme="dark"] .toggle-icon-light { color:#a1a1aa; } .container[data-theme="dark"] .toggle-icon-dark { color:#27272a; } .toggle-thumb { position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#27272a; transform:translateX(26px); transition:transform .22s ease; } .container[data-theme="dark"] .toggle-thumb { background:#f4f4f5; } .container[data-theme="light"] .toggle-thumb { transform:translateX(0); }
+	.profile-menu { position:relative; } .profile-btn span { width:100%; height:100%; display:grid; place-items:center; border-radius:50%; background:#27272a; color:#fff; } .container[data-theme="dark"] .profile-btn span { background:#f4f4f5; color:#18181b; } .profile-dropdown { position:absolute; top:56px; right:0; width:160px; padding:4px; border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.12); opacity:0; pointer-events:none; transform:translateY(-8px); transition:.2s; } .profile-dropdown.active { opacity:1; pointer-events:auto; transform:none; } .profile-dropdown button { width:100%; display:flex; gap:10px; align-items:center; padding:12px; border:0; border-radius:8px; background:transparent; color:#dc2626; cursor:pointer; } .container[data-theme="dark"] .profile-dropdown { background:#1e293b; }
+	.settings-container { display:flex; flex-direction:column; gap:20px; }
+	.settings-card { padding:24px; border:1px solid #e4e4e7; border-radius:16px; background:#fff; box-shadow:0 2px 10px rgba(24,24,27,.04); } .container[data-theme="dark"] .settings-card { background:#1e293b; border-color:#334155; box-shadow:none; } .card-heading { display:flex; gap:14px; align-items:flex-start; margin-bottom:20px; } .card-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:12px; background:#27272a; color:#fff; flex:0 0 auto; } .container[data-theme="dark"] .card-icon { background:#f4f4f5; color:#18181b; } .card-heading h2 { margin:1px 0 4px; font-size:18px; } .card-heading p { margin:0; color:#64748b; font-size:14px; line-height:1.5; } .container[data-theme="dark"] .card-heading p { color:#94a3b8; }
+	.settings-action-btn { width:100%; display:flex; align-items:center; justify-content:space-between; padding:16px; border:1px solid #e4e4e7; border-radius:12px; background:#fafafa; color:#27272a; font-size:15px; font-weight:600; cursor:pointer; transition:.2s; } .settings-action-btn:hover { background:#f4f4f5; border-color:#d4d4d8; } .container[data-theme="dark"] .settings-action-btn { background:#0f172a; border-color:#475569; color:#f1f5f9; } .container[data-theme="dark"] .settings-action-btn:hover { background:#1e293b; }
+	.modal { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; } .modal.active { opacity:1; pointer-events:auto; } .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.5); } .modal[data-theme="dark"] .modal-backdrop { background:rgba(0,0,0,.7); } .modal-content { position:relative; width:90%; max-width:480px; max-height:90vh; overflow-y:auto; padding:28px; border-radius:16px; background:#fff; box-shadow:0 20px 50px rgba(0,0,0,.2); } .modal[data-theme="dark"] .modal-content { background:#1e293b; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+	.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; } .modal-header h3 { margin:0; font-size:20px; } .modal[data-theme="dark"] .modal-header h3 { color:#f1f5f9; } .modal-close { width:32px; height:32px; display:grid; place-items:center; border:0; border-radius:8px; background:#f4f4f5; color:#3f3f46; cursor:pointer; transition:.2s; } .modal-close:hover { background:#e4e4e7; } .modal[data-theme="dark"] .modal-close { background:#334155; color:#f1f5f9; } .modal[data-theme="dark"] .modal-close:hover { background:#475569; }
+	.form-group { margin-bottom:20px; } .form-group label { display:block; margin-bottom:8px; font-size:14px; font-weight:600; } .modal[data-theme="dark"] .form-group label { color:#f1f5f9; } .form-group input { width:100%; padding:12px 14px; border:1px solid #d4d4d8; border-radius:10px; background:#fafafa; color:#27272a; font:inherit; } .form-group input:focus { outline:2px solid #27272a; outline-offset:2px; } .modal[data-theme="dark"] .form-group input { border-color:#475569; background:#0f172a; color:#f1f5f9; } .modal[data-theme="dark"] .form-group input:focus { outline-color:#f4f4f5; } .field-error { min-height:20px; margin:6px 0 0; color:#dc2626; font-size:13px; }
+	.modal-footer { display:flex; gap:12px; justify-content:flex-end; margin-top:28px; } .btn-secondary,.btn-primary { padding:10px 20px; border:0; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; transition:.2s; } .btn-secondary { background:#f4f4f5; color:#3f3f46; } .btn-secondary:hover { background:#e4e4e7; } .btn-primary { background:#27272a; color:#fff; } .btn-primary:hover { background:#18181b; } .modal[data-theme="dark"] .btn-secondary { background:#334155; color:#f1f5f9; } .modal[data-theme="dark"] .btn-secondary:hover { background:#475569; } .modal[data-theme="dark"] .btn-primary { background:#f4f4f5; color:#18181b; } .modal[data-theme="dark"] .btn-primary:hover { background:#e4e4e7; }
+	.save-status { min-height:20px; margin-top:12px; font-size:14px; text-align:center; color:#166534; } .modal[data-theme="dark"] .save-status { color:#86efac; }
+	input:focus-visible,button:focus-visible,a:focus-visible { outline:2px solid #27272a; outline-offset:3px; } .container[data-theme="dark"] input:focus-visible,.container[data-theme="dark"] button:focus-visible,.container[data-theme="dark"] a:focus-visible { outline-color:#f4f4f5; }
+	@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } } @media (max-width:600px) { .main-content { padding:16px; } .settings-card { padding:18px; } .modal-content { padding:20px; } }
+</style>

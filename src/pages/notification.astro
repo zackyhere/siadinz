@@ -19,7 +19,7 @@ import Layout from '../layouts/Layout.astro';
 			<nav class="sidebar-nav">
 				<a href="/" class="nav-item"><House size={20} />Dashboard</a>
 				<a href="/notification" class="nav-item active"><Bell size={20} />Notification</a>
-				<a href="#" class="nav-item"><Settings size={20} />Settings</a>
+				<a href="/settings" class="nav-item"><Settings size={20} />Settings</a>
 				<a href="#" class="nav-item"><CodeXml size={20} />API</a>
 			</nav>
 		</aside>
@@ -39,7 +39,7 @@ import Layout from '../layouts/Layout.astro';
 
 			<form id="notificationForm" novalidate aria-label="Pengaturan notifikasi">
 				<section class="settings-card reveal-on-scroll" aria-labelledby="push-title">
-					<div class="card-heading"><span class="card-icon"><Bell size={20} /></span><div><h2 id="push-title">Push Notification</h2><p>Notifikasi langsung pada perangkat untuk aktivitas absensi.</p></div></div>
+					<div class="card-heading"><span class="card-icon"><Bell size={20} /></span><div><h2 id="push-title">Push Notification</h2><p>Notifikasi langsung pada perangkat untuk aktivitas absensi.</p></div><button type="button" id="testNotification" class="test-btn">Test Notification</button></div>
 					<div class="settings-list">
 						<label class="setting-row"><span><strong>Aktifkan</strong><small>Izinkan notifikasi push dari Siadinz.</small></span><input id="pushEnabled" type="checkbox" role="switch" /></label>
 						<label class="setting-row"><span><strong>Jadwal absen hari ini</strong><small>Ingatkan jika ada jadwal kuliah hari ini.</small></span><input id="pushSchedule" type="checkbox" role="switch" /></label>
@@ -48,7 +48,7 @@ import Layout from '../layouts/Layout.astro';
 				</section>
 
 				<section class="settings-card reveal-on-scroll" aria-labelledby="discord-title">
-					<div class="card-heading"><span class="card-icon"><Send size={20} /></span><div><h2 id="discord-title">Discord Webhook</h2><p>Kirim pengingat absensi ke channel Discord pilihan Anda.</p></div></div>
+					<div class="card-heading"><span class="card-icon"><Send size={20} /></span><div><h2 id="discord-title">Discord Webhook</h2><p>Kirim pengingat absensi ke channel Discord pilihan Anda.</p></div><button type="button" id="testWebhook" class="test-btn">Test Webhook</button></div>
 					<div class="webhook-field"><label for="discordWebhook">Link webhook Discord</label><input id="discordWebhook" type="url" inputmode="url" autocomplete="url" placeholder="https://discord.com/api/webhooks/..." aria-describedby="webhookHint webhookError" /><p id="webhookError" class="field-error" role="alert"></p></div>
 					<div class="settings-list">
 						<label class="setting-row"><span><strong>Aktifkan</strong><small>Gunakan webhook Discord untuk mengirim notifikasi.</small></span><input id="discordEnabled" type="checkbox" role="switch" /></label>
@@ -144,6 +144,68 @@ import Layout from '../layouts/Layout.astro';
 			});
 		});
 		webhookInput.addEventListener('change', () => { if (persist()) showStatus('Pengaturan tersimpan otomatis.'); });
+
+		document.getElementById('testNotification')?.addEventListener('click', async () => {
+			if (!('Notification' in window)) {
+				showStatus('Browser ini tidak mendukung notifikasi.');
+				return;
+			}
+			if (Notification.permission !== 'granted') {
+				const result = await Notification.requestPermission();
+				if (result !== 'granted') {
+					showStatus('Izin notifikasi tidak diberikan.');
+					return;
+				}
+			}
+			try {
+				new Notification('Siadinz Test', {
+					body: 'Notifikasi push berhasil! Pengaturan notifikasi Anda berfungsi dengan baik.',
+					icon: '/favicon.svg',
+					badge: '/favicon.svg',
+					tag: 'siadinz-test'
+				});
+				showStatus('Notifikasi test berhasil dikirim.');
+			} catch (error) {
+				showStatus('Gagal mengirim notifikasi test.');
+			}
+		});
+
+		document.getElementById('testWebhook')?.addEventListener('click', async () => {
+			const webhook = webhookInput.value.trim();
+			if (!webhook) {
+				webhookError.textContent = 'Masukkan URL webhook Discord terlebih dahulu.';
+				showStatus('URL webhook diperlukan untuk test.');
+				return;
+			}
+			if (!isDiscordWebhook(webhook)) {
+				webhookError.textContent = 'Masukkan URL webhook Discord yang valid.';
+				showStatus('URL webhook tidak valid.');
+				return;
+			}
+			webhookError.textContent = '';
+			const testBtn = document.getElementById('testWebhook') as HTMLButtonElement;
+			testBtn.disabled = true;
+			testBtn.textContent = 'Mengirim...';
+			try {
+				const response = await fetch(webhook, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						content: '✅ **Siadinz Webhook Test**\n\nWebhook Discord Anda berhasil terhubung dan berfungsi dengan baik!'
+					})
+				});
+				if (response.ok || response.status === 204) {
+					showStatus('Test webhook berhasil! Cek channel Discord Anda.');
+				} else {
+					showStatus('Webhook gagal. Periksa kembali URL webhook Anda.');
+				}
+			} catch (error) {
+				showStatus('Gagal menghubungi webhook. Periksa koneksi internet Anda.');
+			} finally {
+				testBtn.disabled = false;
+				testBtn.textContent = 'Test Webhook';
+			}
+		});
 	</script>
 </Layout>
 
@@ -155,7 +217,8 @@ import Layout from '../layouts/Layout.astro';
 	.main-content { padding:20px; max-width:960px; margin:auto; } .top-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; } .nav-btn,.profile-btn { width:48px; height:48px; display:grid; place-items:center; border:0; border-radius:50%; background:#fff; color:#64748b; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.06); } .container[data-theme="dark"] .nav-btn,.container[data-theme="dark"] .profile-btn { background:#1e293b; color:#cbd5e1; } .top-nav-actions { display:flex; gap:12px; align-items:center; position:relative; }
 	.theme-toggle { position:relative; width:58px; height:32px; padding:0; border:1px solid #d4d4d8; border-radius:999px; background:#f4f4f5; cursor:pointer; } .container[data-theme="dark"] .theme-toggle { border-color:#52525b; background:#27272a; } .toggle-icon { position:absolute; top:7px; z-index:1; } .toggle-icon-light { left:8px; } .toggle-icon-dark { right:8px; } .container[data-theme="light"] .toggle-icon-light { color:#f4f4f5; } .container[data-theme="light"] .toggle-icon-dark { color:#71717a; } .container[data-theme="dark"] .toggle-icon-light { color:#a1a1aa; } .container[data-theme="dark"] .toggle-icon-dark { color:#27272a; } .toggle-thumb { position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#27272a; transform:translateX(26px); transition:transform .22s ease; } .container[data-theme="dark"] .toggle-thumb { background:#f4f4f5; } .container[data-theme="light"] .toggle-thumb { transform:translateX(0); }
 	.profile-menu { position:relative; } .profile-btn span { width:100%; height:100%; display:grid; place-items:center; border-radius:50%; background:#27272a; color:#fff; } .container[data-theme="dark"] .profile-btn span { background:#f4f4f5; color:#18181b; } .profile-dropdown { position:absolute; top:56px; right:0; width:160px; padding:4px; border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.12); opacity:0; pointer-events:none; transform:translateY(-8px); transition:.2s; } .profile-dropdown.active { opacity:1; pointer-events:auto; transform:none; } .profile-dropdown button { width:100%; display:flex; gap:10px; align-items:center; padding:12px; border:0; border-radius:8px; background:transparent; color:#dc2626; cursor:pointer; } .container[data-theme="dark"] .profile-dropdown { background:#1e293b; }
-	.settings-card { margin-bottom:20px; padding:24px; border:1px solid #e4e4e7; border-radius:16px; background:#fff; box-shadow:0 2px 10px rgba(24,24,27,.04); } .container[data-theme="dark"] .settings-card { background:#1e293b; border-color:#334155; box-shadow:none; } .card-heading { display:flex; gap:14px; align-items:flex-start; margin-bottom:20px; } .card-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:12px; background:#27272a; color:#fff; flex:0 0 auto; } .container[data-theme="dark"] .card-icon { background:#f4f4f5; color:#18181b; } .card-heading h2 { margin:1px 0 4px; font-size:18px; } .card-heading p,.setting-row small,.webhook-field small { margin:0; color:#64748b; font-size:14px; line-height:1.5; } .container[data-theme="dark"] .card-heading p,.container[data-theme="dark"] .setting-row small,.container[data-theme="dark"] .webhook-field small { color:#94a3b8; }
+	.settings-card { margin-bottom:20px; padding:24px; border:1px solid #e4e4e7; border-radius:16px; background:#fff; box-shadow:0 2px 10px rgba(24,24,27,.04); position:relative; } .container[data-theme="dark"] .settings-card { background:#1e293b; border-color:#334155; box-shadow:none; } .card-heading { display:flex; gap:14px; align-items:flex-start; margin-bottom:20px; padding-right:140px; } .card-icon { display:grid; place-items:center; width:40px; height:40px; border-radius:12px; background:#27272a; color:#fff; flex:0 0 auto; } .container[data-theme="dark"] .card-icon { background:#f4f4f5; color:#18181b; } .card-heading h2 { margin:1px 0 4px; font-size:18px; } .card-heading p,.setting-row small,.webhook-field small { margin:0; color:#64748b; font-size:14px; line-height:1.5; } .container[data-theme="dark"] .card-heading p,.container[data-theme="dark"] .setting-row small,.container[data-theme="dark"] .webhook-field small { color:#94a3b8; }
+	.test-btn { position:absolute; top:24px; right:24px; padding:8px 16px; border:1px solid #e4e4e7; border-radius:8px; background:#fff; color:#27272a; font-size:13px; font-weight:600; cursor:pointer; transition:.2s; } .test-btn:hover { background:#f8fafc; border-color:#d4d4d8; } .test-btn:active { transform:scale(.97); } .container[data-theme="dark"] .test-btn { background:#334155; border-color:#475569; color:#f1f5f9; } .container[data-theme="dark"] .test-btn:hover { background:#475569; }
 	.settings-list { border-top:1px solid #e4e4e7; } .container[data-theme="dark"] .settings-list { border-color:#334155; } .setting-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:17px 0; border-bottom:1px solid #e4e4e7; cursor:pointer; } .container[data-theme="dark"] .setting-row { border-color:#334155; } .setting-row strong,.setting-row small { display:block; } .setting-row strong { margin-bottom:3px; font-size:15px; } input[role="switch"] { appearance:none; width:46px; height:26px; flex:0 0 auto; margin:0; border:1px solid #d4d4d8; border-radius:999px; background:#e4e4e7; cursor:pointer; transition:.2s; } input[role="switch"]::after { content:""; display:block; width:20px; height:20px; margin:2px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18); transition:.2s; } input[role="switch"]:checked { background:#27272a; border-color:#27272a; } input[role="switch"]:checked::after { transform:translateX(20px); } .container[data-theme="dark"] input[role="switch"] { background:#475569; border-color:#64748b; } .container[data-theme="dark"] input[role="switch"]:checked { background:#f4f4f5; border-color:#f4f4f5; } .container[data-theme="dark"] input[role="switch"]:checked::after { background:#18181b; } input:focus-visible,button:focus-visible,a:focus-visible { outline:2px solid #27272a; outline-offset:3px; } .container[data-theme="dark"] input:focus-visible,.container[data-theme="dark"] button:focus-visible,.container[data-theme="dark"] a:focus-visible { outline-color:#f4f4f5; }
 	.webhook-field { margin:0 0 4px; } .webhook-field label { display:block; margin-bottom:8px; font-size:14px; font-weight:700; } .webhook-field input { width:100%; margin-bottom:6px; padding:12px 14px; border:1px solid #d4d4d8; border-radius:10px; background:#fafafa; color:#27272a; font:inherit; } .container[data-theme="dark"] .webhook-field input { border-color:#475569; background:#0f172a; color:#f1f5f9; } .field-error { min-height:20px; margin:6px 0 0; color:#dc2626; font-size:14px; }
 	.save-status { padding:0 0 28px; min-height:24px; } #saveStatus { margin:0; color:#166534; font-size:14px; } .container[data-theme="dark"] #saveStatus { color:#86efac; }
